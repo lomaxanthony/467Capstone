@@ -20,3 +20,13 @@ Well, we have the app for you!
 - 📜 Get recipe ideas for your current food items
 - 🧮 Get stats on food item usage
 
+
+## Todo
+- [ ] Decide on app name
+- [ ] Decide on development environment
+- [ ] Decide on backend database
+- [ ] Build the damn thing 😤
+
+
+## Project Status
+🚧 Under development - Stay tuned for updates!
