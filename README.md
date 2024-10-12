@@ -30,3 +30,8 @@ Well, we have the app for you!
 
 ## Project Status
 🚧 Under development - Stay tuned for updates!
+
+## License
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+
