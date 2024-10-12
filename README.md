@@ -1,6 +1,9 @@
 # (Soon to be named Smart Grocery App)
 
-- Anthony Lomax, Brandon Tsai, Kyle Belina, Robin Baker 
+- Anthony Lomax, Brandon Tsai, Kyle Belina, Robin Baker
+
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+
   
 
 Welcome to our CS467 Capstone Project! 
@@ -33,5 +36,4 @@ Well, we have the app for you!
 
 ## License
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
-![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 
