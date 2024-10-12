@@ -1,6 +1,6 @@
 # (Soon to be named Smart Grocery App)
 
-        Anthony Lomax, Brandon Tsai, Kyle Belina, Robin Baker 
+- Anthony Lomax, Brandon Tsai, Kyle Belina, Robin Baker 
   
 
 Welcome to our CS467 Capstone Project! 
