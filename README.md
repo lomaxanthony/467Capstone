@@ -16,7 +16,7 @@ Welcome to our CS467 Capstone Project!
 Need a quick, easy way to track what you buy at the store? 
 Tired of throwing away food that you forgot was in the fridge?
 Want some exciting, new recipes to utilize that last carrot in the bottom of the crisper?
-Ever wonder what foods you love?
+Ever wonder which foods you love?
 
 Well, we have the app for you!
 
