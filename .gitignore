@@ -1,0 +1,46 @@
+# Python-related files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.env
+
+# Virtual environment folders
+venv/
+.env/
+.venv/
+
+# Logs and local files
+*.log
+instance/
+*.sqlite3
+
+# VSCode settings (if using VSCode)
+.vscode/
+
+# Flask-specific files
+*.flaskenv
+__pycache__/
+
+# Node.js-related files (for Vue/React frontend)
+node_modules/
+dist/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# macOS system files
+.DS_Store
+
+# Linux swap files
+*.swp
+
+# Coverage and test reports
+.coverage
+htmlcov/
+
+# Build artifacts
+*.egg-info/
+.eggs/
+build/
