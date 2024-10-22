@@ -30,11 +30,20 @@ Well, we have the app for you!
 
 
 ## Todo
-- [ ] Decide on app name
-- [ ] Decide on development environment
-- [ ] Decide on backend database
-- [ ] Build the damn thing 😤
-
+- [x] Decide on app name
+    - Grocery Buddy ??
+- [x] Decide on development environment
+    - Flask // Vue.js 
+- [x] Decide on backend database
+    - google cloud SQL ??
+- [ ] Build the damn thing
+    - [ ] Backend:
+        - [ ] Set up cloud data base
+        - [ ]  
+    - [ ] Frontend:
+        - [ ] Chose color theme for app
+        - [ ] Design app navigation/layout
+    
 
 ## Project Status
 🚧 Under development - Stay tuned for updates!
