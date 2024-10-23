@@ -14,20 +14,28 @@ groceries = [
     {"id": 1, "name": "Eggs", "quantity": 12}
 ]
 
-@app.route('/api/<username>/groceries', methods=['GET']) # Added /<username> so we know who's groceries we're taking from
+# @app.route('/api/<username>/groceries', methods=['GET']) # Added /<username> so we know who's groceries we're taking from
+@app.route('/api/groceries', methods=['GET'])
 def get_groceries(username):
-    query = client.query(kind="grocery")
+    return jsonify(groceries)
+    
+    """query = client.query(kind="grocery")
     query.add_filter('username', '=', username)
     results = list(query.fetch())
     for r in results:
         r['id'] = r.key.id
-    return (results, 200)
+    return (results, 200)"""
 
     # return jsonify(groceries)
 
-@app.route('/api/<username>/groceries', methods={'POST'}) # Added /<username> so we know who's groceries we're adding to
+# @app.route('/api/<username>/groceries', methods={'POST'}) # Added /<username> so we know who's groceries we're adding to
+@app.route('/api/groceries', methods={'POST'})
 def add_grocery(username):
-    content = request.json()
+    new_item = request.json()
+    groceries.append(new_item)
+    return jsonify(new_item), 201
+    
+    """content = request.json()
     new_grocery_item = datastore.Entity(key=client.key("grocery")) # Stores it as a kind "Grocery"
     if "name" not in content or "quantity" not in content:
         return ({"Error": "The request body is missing at least one of the required attributes"}, 400)
@@ -38,7 +46,7 @@ def add_grocery(username):
     })
     client.put(new_grocery_item)
     new_grocery_item['id'] = new_grocery_item.key.id
-    return (new_grocery_item, 201)
+    return (new_grocery_item, 201)"""
 
     # new_item = request.json()
     # groceries.append(new_item)
