@@ -2,10 +2,10 @@ from flask import Flask, jsonify, request, send_from_directory, redirect, url_fo
 from flask_cors import CORS
 import os
 from datetime import timedelta
-from google.cloud import datastore
+# from google.cloud import datastore
 
 app = Flask(__name__, static_folder='static', static_url_path='')
-client = datastore.Client()
+# client = datastore.Client()
 CORS(app)       #Allow frontend to communicate with the backend
 
 # Demo Groceries to test functionality
