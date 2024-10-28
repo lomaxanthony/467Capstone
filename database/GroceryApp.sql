@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`AllFoods` (
   `food_id` INT NOT NULL AUTO_INCREMENT,
   `food_name` VARCHAR(50) NOT NULL,
   `expiration_days` INT NOT NULL,
-  `quantity` INT NOT NULL,
   `food_type` VARCHAR(50) NOT NULL,
   PRIMARY KEY (`food_id`)
 );
@@ -88,6 +87,7 @@ CREATE INDEX `idx_user_preferences_user_id` ON `GroceryApp`.`UserPreferences` (`
 CREATE TABLE IF NOT EXISTS `GroceryApp`.`Inventory` (
   `inventory_id` INT NOT NULL AUTO_INCREMENT,
   `food_id` INT NOT NULL,
+  `quantity` INT NOT NULL,
   `user_id` INT NOT NULL,
   `location_id` INT NOT NULL,
   `expiration_date` DATE NOT NULL,
