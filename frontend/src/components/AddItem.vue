@@ -1,3 +1,11 @@
+<!--
+
+The AddItem component contains the pop-up form to add groceries (still needs more formating/styling)
+
+-->
+
+
+
 <template>
     <div>
       <form @submit.prevent="handleSubmit">

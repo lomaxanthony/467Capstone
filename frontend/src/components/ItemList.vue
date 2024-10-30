@@ -1,3 +1,13 @@
+<!-- 
+ 
+The ItemList.vue component displays the scrollable list of grocery items.
+Needs a bit more work, but wanted to get the scrolling list started :)
+
+
+-->
+
+
+
 <template>
   <div class="scroll-wrapper">
     <div class="scroll-container" ref="scrollContainer">
@@ -65,11 +75,11 @@ const props = defineProps({
   width: 125px;
   max-width: calc(100% - 40px);
   background-color: white;
-  border: 2px solid #1a365d; /* Dark blue border */
-  border-radius: 4px; /* Less rounded for boxier look */
+  border: 2px solid #1a365d; 
+  border-radius: 4px; 
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
-  overflow: hidden; /* Ensures inner content respects borders */
+  overflow: hidden;
 }
 
 .list-item:hover {

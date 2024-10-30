@@ -1,3 +1,10 @@
+<!-- 
+ 
+Added a Bootstrap NavBar that we can change if we want. Just wanted some okay looking formating to use while testing
+
+-->
+
+
 <template>
   <div id="app">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">

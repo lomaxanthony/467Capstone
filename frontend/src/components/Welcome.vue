@@ -1,14 +1,17 @@
+<!-- 
+
+Added a welcome container with a quick overview of the app. We can add more to this is we need. Just wanted a quick landing page.
+I have a "Get Started" button that goes to myPantry page. But we could also have a log-in splash page. Just some ideas :)
+
+-->
+
+
+
 <template>
   <div class="welcome-container">
     <h1 class="app-title">Welcome to Grocery Buddy</h1>
     <h3 class="tagline">Your smart assistant for hassle-free grocery shopping!</h3>
     
-    <!-- <img 
-      src="@/assets/grocery-buddy-logo.png" 
-      alt="Grocery Buddy Logo" 
-      class="logo"
-    /> -->
-
     <p class="description">With Grocery Buddy, you can:</p>
     <ul class="feature-list">
       <li>🛒 Add and track all food items purchased</li>

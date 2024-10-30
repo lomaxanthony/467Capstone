@@ -1,3 +1,25 @@
+<!-- 
+ 
+This is the AddItemView.vue file that calls the ItemList.vue and AddItem.vue components.
+ 
+ The ItemList.vue component displays the scrollable list of grocery items. 
+ The AddItem component contains the pop-up form to add groceries (still needs more formating/styling)
+ I was having issues with saving the list and having it upload properly, but I think I have it working.  
+
+ Obviously this needs more formating and styling but I think this is the general direction we
+ should be going. We can use this logic throughout to continue to add different features within each view file. 
+ 
+****  
+      I couldn't get the SQL to work on my machine so I made a testapp.py with the original dictionary
+      to test the frontend formating of Vue.js. We will need to adjust the API calls once we can get all
+      the backend up and running with SQL. I'm not sure if we will need to adjust how how the Vue files will
+      need to function moving forward, but the logic of calling components should still stand.
+
+****
+
+ -->
+
+
 <template>
   <main>
 
@@ -16,40 +38,6 @@
   </main>
 </template>
 
-<!-- <script setup>
-import { ref, onMounted } from 'vue';
-import AddItem from '../components/AddItem.vue'
-import ItemList from '../components/ItemList.vue';
-
-const groceries = ref([]);
-const showForm = ref(false);
-
-// Fetch existing groceries from the API
-// will need to change when DB is working
-const fetchGroceries = async () => {
-  try {
-    const response = await fetch('http://127.0.0.1:5000/api/groceries');
-    groceries.value = await response.json();
-  } catch (error) {
-    console.error('Failed to fetch groceries:', error);
-  }
-};
-
-// add new item to list
-const addItemToList = (newItem) => {
-  groceries.value.push(newItem);
-  toggleForm();
-};
-
-// show form on click
-const toggleForm = () => {
-  showForm.value = !showForm.value;
-};
-
-// Fetch groceries on component mount
-onMounted(fetchGroceries);
-</script> -->
-
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import AddItem from '../components/AddItem.vue';
@@ -59,6 +47,7 @@ const groceries = ref([]);
 const showForm = ref(false);
 
 // Load groceries from localStorage
+
 const loadGroceries = () => {
   const savedGroceries = localStorage.getItem('groceries');
   if (savedGroceries) {
