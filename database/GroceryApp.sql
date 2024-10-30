@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Users` (
   `email` VARCHAR(50) NOT NULL,
   `phone_number` VARCHAR(15) NULL DEFAULT NULL,
   `receive_sms_notifications` TINYINT NULL DEFAULT TRUE,
+  `receive_email_notifications` TINYINT NULL DEFAULT TRUE,
+  `preferred_notification_time` TIME NULL DEFAULT NULL,
   PRIMARY KEY (`user_id`)
 );
 
@@ -64,22 +66,6 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Recipes` (
 );
 
 CREATE INDEX `idx_recipes_user_id` ON `GroceryApp`.`Recipes` (`user_id` ASC) VISIBLE;
-
--- -----------------------------------------------------
--- Table `GroceryApp`.`UserPreferences`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `GroceryApp`.`UserPreferences` (
-  `preference_id` INT NOT NULL AUTO_INCREMENT,
-  `user_id` INT NOT NULL,
-  `receive_email_notifications` TINYINT NULL DEFAULT TRUE,
-  `preferred_notification_time` TIME NULL DEFAULT NULL,
-  PRIMARY KEY (`preference_id`),
-  CONSTRAINT `fk_user_preferences_user_id`
-    FOREIGN KEY (`user_id`)
-    REFERENCES `GroceryApp`.`Users` (`user_id`)
-);
-
-CREATE INDEX `idx_user_preferences_user_id` ON `GroceryApp`.`UserPreferences` (`user_id` ASC) VISIBLE;
 
 -- -----------------------------------------------------
 -- Table `GroceryApp`.`Inventory`
