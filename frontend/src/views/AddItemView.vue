@@ -3,7 +3,7 @@
 This is the AddItemView.vue file that calls the ItemList.vue and AddItem.vue components.
  
  The ItemList.vue component displays the scrollable list of grocery items. 
- The AddItem component contains the pop-up form to add groceries (still needs more formating/styling)
+ The AddItem component contains the pop-up form to add groceries (still needs more formatting/styling)
  I was having issues with saving the list and having it upload properly, but I think I have it working.  
 
  Obviously this needs more formating and styling but I think this is the general direction we
@@ -11,7 +11,7 @@ This is the AddItemView.vue file that calls the ItemList.vue and AddItem.vue com
  
 ****  
       I couldn't get the SQL to work on my machine so I made a testapp.py with the original dictionary
-      to test the frontend formating of Vue.js. We will need to adjust the API calls once we can get all
+      to test the frontend formatting of Vue.js. We will need to adjust the API calls once we can get all
       the backend up and running with SQL. I'm not sure if we will need to adjust how how the Vue files will
       need to function moving forward, but the logic of calling components should still stand.
 
@@ -23,12 +23,15 @@ This is the AddItemView.vue file that calls the ItemList.vue and AddItem.vue com
 <template>
   <main>
 
+    // this is the 'items' object that gets used by ItemList.vue
     <ItemList :items="groceries" /> 
     
+    // AddItem component is hidden until + button is clicked
     <button @click="toggleForm" class="toggle-btn">
       {{ showForm ? '➕' : '➕' }}
     </button>
 
+    // add item component pops-up and creates a new item to add
     <div v-if="showForm" class="popup-overlay" @click="toggleForm">
       <div class="popup-content" @click.stop>
         <AddItem @item-added="addItemToList" @close="toggleForm" />
@@ -39,6 +42,7 @@ This is the AddItemView.vue file that calls the ItemList.vue and AddItem.vue com
 </template>
 
 <script setup>
+// import necessary components
 import { ref, onMounted, watch } from 'vue';
 import AddItem from '../components/AddItem.vue';
 import ItemList from '../components/ItemList.vue';
@@ -109,11 +113,7 @@ watch(groceries, () => {
   saveGroceries();
 }, { deep: true });
 
-// On component mount
 onMounted(async () => {
-  // First try to load from localStorage for immediate display
-  loadGroceries();
-  // Then fetch from API to get the latest data
   await fetchGroceries();
 });
 </script>
@@ -135,7 +135,6 @@ main {
   border-radius: 5px;
 }
 
-/* Popup overlay for the form */
 .popup-overlay {
   position: fixed;
   top: 0;
@@ -149,7 +148,6 @@ main {
   z-index: 10;
 }
 
-/* Popup content styling */
 .popup-content {
   background-color: white;
   padding: 30px;

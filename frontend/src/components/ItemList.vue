@@ -10,13 +10,18 @@ Needs a bit more work, but wanted to get the scrolling list started :)
 
 <template>
   <div class="scroll-wrapper">
+    // create a horizontal scrolling list
     <div class="scroll-container" ref="scrollContainer">
       <ul class="horizontal-list">
+
+        // use v-for to get the individual items in items to display in 
+        // their own separate containers for scrolling
         <li 
           v-for="item in items" 
           :key="item.id"
           class="list-item"
         >
+          // have separate containers for name and quantity for formating purposes
           <div class="item-content">
             <span class="item-name">{{ item.name }}</span>
             <span class="item-quantity">Quantity: {{ item.quantity }}</span>
@@ -28,8 +33,11 @@ Needs a bit more work, but wanted to get the scrolling list started :)
 </template>
 
 <script setup>
+// Import props as a way to handle the items.
+
 import { defineProps, ref} from 'vue';
 
+// Prop that holds the item values for displaying
 const props = defineProps({
   items: {
     type: Array,
