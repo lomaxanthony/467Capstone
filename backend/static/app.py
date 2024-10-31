@@ -99,7 +99,7 @@ def get_user_info(username):
             FROM GroceryyApp.Users
             WHERE user_name = %s
             """
-            cursor.execute(user_query, (usuername))
+            cursor.execute(user_query, (username))
             user = cursor.fetchall()
             if not user:
                 conn.close()
