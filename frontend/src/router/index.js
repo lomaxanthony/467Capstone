@@ -1,6 +1,10 @@
+// Use this router file to add new page views with a corresponding
+// **View.vue file. The View.vue files will call the .vue components from there. 
+
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import AddItemView from '../views/AddItemView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,6 +13,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
+    },
+    {
+      path: '/add',
+      name: 'addItems',
+      component: AddItemView
     },
     {
       path: '/profile',

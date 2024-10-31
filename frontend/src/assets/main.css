@@ -1,35 +1,80 @@
-@import './base.css';
+/* 
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+Took some inspiration from CS290 to make a bit of a color variable scheme that we can use for styling
+
+*/
+
+
+/*   ----- Imports  -----  */
+
+@import url('https://fonts.googleapis.com/css2?family=Arvo&family=Open+Sans:wght@400&display=swap');
+
+
+
+/*   ----- Variables  -----  */
+:root {
+    --mountainShadow: #363d43;
+  
+    --leafyGreen: #0e8321b2;
+  
+    --freshVeg: #09a516;
+
+    --glacierWater: #7eafd4;
+
+    --lighterGlacierWater: #a5d1f39c;
+  
+    --fairwayGrass: #316220;
+
+    --darkerMountainShadow: #1c1d1f;
+  
+    /* --flagstickOrange: #f9bf2d;
+  
+    --cloudyTransparent: #dee3e78f; 
+
+    
+
+    --flagRed: #D9304F;
+
+    --lightFairwayGrass: #79bb65; */
 }
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+/*  ----- Viewport ----- elements inherited by all remaining elements ----- */
+body {       /* Can alternatively define in html {} or :root {} */
+    background-color:var(--mountainShadow);  
+    background-size: cover;
+    background-attachment: fixed;
+    background-position: top left;
+    background-repeat: no-repeat;
+    color: var(--mountainShadow);
+    font-family: 'Open Sans', sans-serif;
+    font-size: 1.2em;
+    line-height: 1.2; 
+    margin: auto;
+    width: 80%;
+    max-width: 1200px;
+    padding: 3%;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+
+/*  ----- Page layout blocks -----  */
+header {
+    background-color: var(--mountainShadow);
+    margin-top: 10px;
+    margin-bottom: 0;
+    padding: 30px;
+    border: 10px;
 }
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+header img{
+    height: 80px;
+    width: 80px;
+}
+main {
+  background-color: var(--mountainShadow);
+  padding: 4%;
+  border: 60px;
+}
+section {
+    background-color: var(--cloudy);
+    margin: 2%;
+    padding: 4%;
 }
