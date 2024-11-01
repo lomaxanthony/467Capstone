@@ -82,7 +82,7 @@ def get_db_connection():
 @app.route('/api/<username>', methods=['GET'])
 def get_user_info(username):
     """
-    Returns user_id, user_name, email, phone number, and SMS notifications preference
+    Returns user_id, user_name, email, phone number, SMS notifications preference, email notifications preference, and preferred notification time
    
     username is passed in URL
    
@@ -125,6 +125,8 @@ def add_user():
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
+        receive_email_notifications (bool)
+        preferred_notification_time (TIME)
        
     Returns:
         201 if successful
