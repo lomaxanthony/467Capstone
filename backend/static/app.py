@@ -201,7 +201,7 @@ def update_user(username):
             return jsonify(CONTENT_NOT_VALID), 400
 
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (content['user_name']))
+        cursor.execute(user_query, (content['user_name'],))
         user = cursor.fetchone()
         if not user:
             conn.close()
