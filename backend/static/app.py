@@ -99,13 +99,13 @@ def get_user_info(username):
             FROM GroceryyApp.Users
             WHERE user_name = %s
             """
-            cursor.execute(user_query, (usuername))
-            user = cursor.fetchall()
-            if not user:
-                conn.close()
-                return jsonify(USER_NOT_FOUND), 404
+        cursor.execute(user_query, (username))
+        user = cursor.fetchall()
+        if not user:
             conn.close()
-            return jsonify(user), 200
+            return jsonify(USER_NOT_FOUND), 404
+        conn.close()
+        return jsonify(user), 200
     except mysql.connector.Error as err:
         # Database error
         return jsonify({"Error": f"Database error: {err}"}), 500
@@ -166,7 +166,7 @@ def add_user():
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/user', methods=['PUT'])
+@app.route('/api/<username>', methods=['PUT'])
 def update_user(username):
     """
     Updates user information.
@@ -174,7 +174,8 @@ def update_user(username):
     User info is passed in body of message.
    
     Expected:
-        user_name (string)
+        user_name (string) (Passed in URL)
+
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
@@ -190,12 +191,12 @@ def update_user(username):
         cursor = conn.cursor(dictionary=True)
         
         content = request.get_json()
-        if not content_is_valid(content, ['user_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
+        if not content_is_valid(content, ['email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
 
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (content['user_name',))
+        cursor.execute(user_query, (username,))
         user = cursor.fetchone()
         if not user:
             conn.close()
@@ -210,7 +211,7 @@ def update_user(username):
             UPDATE GroceryApp.Users
             SET user_name = %s, email = %s, phone_number = %s, receive_sms_notifications = %s, receive_email_notifications = %s, preferred_notification_time = %s
             WHERE user_id = %s
-        """
+            """
         cursor.execute(update_query, (content['user_name'], content['email'], content['phone_number'], content['receive_sms_notifications'], user['user_id'], user['receive_email_notifications'], user['preferred_notification_time']))
         conn.commit()
         conn.close()
@@ -269,7 +270,7 @@ def delete_user(username):
 
 
 ################################################################
-# GET, POST, DELETE User's Groceries (in GroceryApp.Inventory) #
+# GET, POST, PUT, DELETE User's Groceries (in GroceryApp.Inventory) #
 ################################################################
 @app.route('/api/groceries/<username>', methods=['GET'])
 def get_groceries(username):
@@ -390,6 +391,94 @@ def add_grocery():
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+
+@app.route('/api/groceries/<int:inventory_id>', methods=['PUT'])
+def update_grocery(inventory_id):
+    """
+    Updates an existing grocery item in the inventory for the specified user.
+
+    Inventory ID passed in URL
+
+    Request Body:
+    {
+        "food_id": int,
+        "quantity": int,
+        "user_id": int,
+        "location_id": int,
+        "expiration_date": date,
+        "date_purchase": date,
+        "status": ENUM('fresh', 'used', 'spoiled'),
+        "category": ENUM('green', 'yellow', 'red')
+    }
+
+    Returns:
+        200 OK: Grocery item updated successfully.
+        400 Bad Request: Invalid request body.
+        404 Not Found: Inventory item or associated user/food/location not found.
+        500 Internal Server Error: Database error.
+    """
+    
+    content = request.get_json()
+    if not content_is_valid(content, ['food_id', 'quantity', 'user_id', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
+        return jsonify(CONTENT_NOT_VALID), 400
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if the inventory item exists
+        inventory_query = "SELECT * FROM GroceryApp.Inventory WHERE inventory_id = %s"
+        cursor.execute(inventory_query, (inventory_id,))
+        inventory_item = cursor.fetchone()
+        if not inventory_item:
+            conn.close()
+            return jsonify({"Error": "Inventory item not found"}), 404
+
+        # Check if the user exists
+        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_id = %s"
+        cursor.execute(user_query, (content['user_id'],))
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return jsonify({"Error": "User not found"}), 404
+
+        # Check if the food exists
+        food_query = "SELECT food_id FROM GroceryApp.AllFoods WHERE food_id = %s"
+        cursor.execute(food_query, (content['food_id'],))
+        food = cursor.fetchone()
+        if not food:
+            conn.close()
+            return jsonify({"Error": "Food ID not found"}), 404
+
+        # Check if the location exists
+        location_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_id = %s"
+        cursor.execute(location_query, (content['location_id'],))
+        location = cursor.fetchone()
+        if not location:
+            conn.close()
+            return jsonify({"Error": "Location ID not found"}), 404
+
+        # Update the grocery item
+        update_query = """
+            UPDATE GroceryApp.Inventory
+            SET food_id = %s, quantity = %s, user_id = %s, location_id = %s, expiration_date = %s, date_purchase = %s, status = %s, category = %s
+            WHERE inventory_id = %s
+        """
+        cursor.execute(update_query, (
+            content['food_id'], content['quantity'], content['user_id'], 
+            content['location_id'], content['expiration_date'], content['date_purchase'], 
+            content['status'], content['category'], inventory_id
+        ))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({"Message": "Grocery item updated successfully"}), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
         
 
