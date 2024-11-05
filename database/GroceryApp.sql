@@ -22,11 +22,15 @@ USE `GroceryApp` ;
 CREATE TABLE IF NOT EXISTS `GroceryApp`.`Users` (
   `user_id` INT NOT NULL AUTO_INCREMENT,
   `user_name` VARCHAR(50) NOT NULL,
+  `password` VARCHAR(50) NOT NULL,
+  `first_name` VARCHAR(50) NOT NULL,
+  `last_name` VARCHAR(50) NOT NULL,
+  `profile_pic_url` VARCHAR(50),
   `email` VARCHAR(50) NOT NULL,
-  `phone_number` VARCHAR(15) NULL DEFAULT NULL,
-  `receive_sms_notifications` TINYINT NULL DEFAULT TRUE,
-  `receive_email_notifications` TINYINT NULL DEFAULT TRUE,
-  `preferred_notification_time` TIME NULL DEFAULT NULL,
+  `phone_number` VARCHAR(15),
+  `receive_sms_notifications` TINYINT DEFAULT TRUE,
+  `receive_email_notifications` TINYINT DEFAULT TRUE,
+  `preferred_notification_time` TIME,
   PRIMARY KEY (`user_id`)
 );
 
