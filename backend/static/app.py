@@ -4,6 +4,7 @@ import mysql.connector
 from mysql.connector import Error
 import os
 import sys
+from db_config import get_db_connection
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 
@@ -23,12 +24,12 @@ CONTENT_NOT_VALID = {"Error": "Invalid request body"}
 
 # MySQL database configuration
 # Will need to go though and change values to match our values
-db_config = {
-    'user': 'user',
-    'password': 'password',
-    'host': 'localhost',
-    'database': 'GroceryApp'
-}
+#db_config = {
+#    'user': os.getenv('DB_USER'),
+#    'password': 'password',
+#    'host': 'localhost',
+#    'database': 'GroceryApp'
+#}
 
 
 # Returns True if content is valid False otherwise
@@ -53,9 +54,14 @@ def execute_sql_file(connection, sql_file_path):
         cursor.close()
 
 # To establish MySQL connection
-def get_db_connection():
-    conn = mysql.connector.connect(**db_config)
-    return conn
+#def get_db_connection():
+#    try:
+#        conn = mysql.connector.connect(**db_config)
+#        if conn.is_connected():
+#            return conn
+#    except Error as txt:
+#        print(f"Error with database connectionL: {txt}")
+#        return None
 
 
 # Function to initialize the database
@@ -96,7 +102,7 @@ def get_user_info(username):
         cursor = conn.cursor(dictionary=True)
        
         user_query = """SELECT user_id AS id, user_name AS username, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time
-            FROM GroceryyApp.Users
+            FROM GroceryApp.Users
             WHERE user_name = %s
             """
         cursor.execute(user_query, (username))
@@ -137,7 +143,7 @@ def add_user():
     try:
         content = request.get_json()
         
-        if not content_is_valid(content, ['user_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time'])
+        if not content_is_valid(content, ['user_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
             return jsonify(CONTENT_NOT_VALID), 400
         
         conn = get_db_connection()
@@ -285,7 +291,7 @@ def get_groceries(username):
         200 if groceries successfully returned
         404 if user not found or user has no groceries
         500 Internal Server Error: Database error.
-    """
+    """   
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
