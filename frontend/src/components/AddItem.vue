@@ -57,13 +57,3 @@ input {
   margin: 0.5rem;
 }
 </style>
-
-<style>
-#app {
-  font-family: Arial, sans-serif;
-  margin: 2rem;
-}
-input {
-  margin: 0.5rem;
-}
-</style>
