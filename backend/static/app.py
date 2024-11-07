@@ -1,11 +1,14 @@
 from flask import Flask, jsonify, request, send_from_directory, redirect, url_for, render_template, session, flash
 from flask_cors import CORS
+from flask_bcrypt import Bcrypt
 import mysql.connector
 from mysql.connector import Error
 import os
 import sys
+from db_config import get_db_connection
 
 app = Flask(__name__, static_folder='static', static_url_path='')
+bcrypt = Bcrypt(app)
 
 CORS(app)    #Allow frontend to communicate with the backend
 
@@ -23,12 +26,12 @@ CONTENT_NOT_VALID = {"Error": "Invalid request body"}
 
 # MySQL database configuration
 # Will need to go though and change values to match our values
-db_config = {
-    'user': 'user',
-    'password': 'password',
-    'host': 'localhost',
-    'database': 'GroceryApp'
-}
+#db_config = {
+#    'user': os.getenv('DB_USER'),
+#    'password': 'password',
+#    'host': 'localhost',
+#    'database': 'GroceryApp'
+#}
 
 
 # Returns True if content is valid False otherwise
@@ -53,9 +56,14 @@ def execute_sql_file(connection, sql_file_path):
         cursor.close()
 
 # To establish MySQL connection
-def get_db_connection():
-    conn = mysql.connector.connect(**db_config)
-    return conn
+#def get_db_connection():
+#    try:
+#        conn = mysql.connector.connect(**db_config)
+#        if conn.is_connected():
+#            return conn
+#    except Error as txt:
+#        print(f"Error with database connectionL: {txt}")
+#        return None
 
 
 # Function to initialize the database
@@ -76,13 +84,13 @@ def get_db_connection():
     print("Database initialized successfully.")"""
 
 
-###################################
-# GET, POST, PUT, and DELETE User #
-###################################
+####################################################################################
+# GET, POST, PUT, and DELETE User. Also login via POST and change password via PUT #
+####################################################################################
 @app.route('/api/<username>', methods=['GET'])
 def get_user_info(username):
     """
-    Returns user_id, user_name, email, phone number, SMS notifications preference, email notifications preference, and preferred notification time
+    Returns user_id, user_name, first_name, last_name, profile_pic_url, email, phone number, SMS notifications preference, email notifications preference, and preferred notification time
    
     username is passed in URL
    
@@ -95,8 +103,8 @@ def get_user_info(username):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
        
-        user_query = """SELECT user_id AS id, user_name AS username, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time
-            FROM GroceryyApp.Users
+        user_query = """SELECT user_id AS id, user_name AS username, first_name, last_name, profile_pic_url, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time
+            FROM GroceryApp.Users
             WHERE user_name = %s
             """
         cursor.execute(user_query, (username))
@@ -104,6 +112,13 @@ def get_user_info(username):
         if not user:
             conn.close()
             return jsonify(USER_NOT_FOUND), 404
+            
+        # Handle nullable values
+        user = user[0]  # Fetch the first (and only) row
+        user['phone_number'] = user['phone_number'] or ''  # Default to empty string
+        user['profile_pic_url'] = user['profile_pic_url'] or ''  # Default to empty string
+        user['preferred_notification_time'] = str(user['preferred_notification_time']) or ''  # Convert time to string and default to empty string
+            
         conn.close()
         return jsonify(user), 200
     except mysql.connector.Error as err:
@@ -122,6 +137,10 @@ def add_user():
     User info is passed in body of message.
     Expected:
         user_name (string)
+        password (string)
+        first_name (string)
+        last_name (string)
+        profile_pic_url (string)
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
@@ -137,8 +156,15 @@ def add_user():
     try:
         content = request.get_json()
         
-        if not content_is_valid(content, ['user_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time'])
+        if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications'])
             return jsonify(CONTENT_NOT_VALID), 400
+            
+        # Provide default values for optional fields
+        content['profile_pic_url'] = content.get('profile_pic_url', '')
+        content['phone_number'] = content.get('phone_number', '')
+        content['preferred_notification_time'] = content.get('preferred_notification_time', None)
+            
+        hashed_password = bcrypt.generate_password_hash(content['password']).decode('utf-8')
         
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -152,10 +178,10 @@ def add_user():
    
         # Insert new grocery item
         insert_query = """
-            INSERT INTO Users (user_name, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO Users (user_name, password, first_name, last_name, profile_pic_url, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['user_name'], content['email'], content['phone_number'], content['receive_sms_notifications'], content['receive_email_notifications'], content['preferred_notification_time']))
+        cursor.execute(insert_query, (content['user_name'], hashed_password, content['first_name'], content['last_name'], content['profile_pic_url'], content['email'], content['phone_number'], content['receive_sms_notifications'], content['receive_email_notifications'], content['preferred_notification_time']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "User created successfully"}), 201
@@ -166,7 +192,53 @@ def add_user():
     except Exception as e:
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
+        
 
+@app.route('/api/login', methods=['POST'])
+def login():
+    """
+    "Login" depending on return status
+    
+    user_name and password are passed in body
+    
+    Returns:
+        200 if successful
+        400 body content Invalid
+        404 user not found
+        401 password incorrect
+        500 database error
+    """
+    try:
+        content = request.get_json()
+        
+        if not content_is_valid(content, ['user_name', 'password'])
+            return jsonify(CONTENT_NOT_VALID), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+       
+        user_query = """SELECT user_id AS id, user_name AS username, password as hashed_password
+            FROM GroceryyApp.Users
+            WHERE user_name = %s
+            """
+        cursor.execute(user_query, (content['user_name']))
+        user = cursor.fetchall()
+        if not user:
+            conn.close()
+            return jsonify(USER_NOT_FOUND), 404
+        hashed_password = user[0]['hashed_password']
+        conn.close()
+        
+        if bcrypt.check_password_hash(hashed_password, content['password']):
+            return jsonify({'Message': 'Login successful'})
+        else:
+            return jsonify({'Message': 'Invalid password'}), 401
+    except mysql.connector.Error as err:
+        # Database error
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/api/<username>', methods=['PUT'])
 def update_user(username):
@@ -178,6 +250,10 @@ def update_user(username):
     Expected:
         user_name (string) (Passed in URL)
 
+        password (string)
+        first_name (string)
+        last_name (string)
+        profile_pic_url (string)
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
@@ -193,9 +269,14 @@ def update_user(username):
         cursor = conn.cursor(dictionary=True)
         
         content = request.get_json()
-        if not content_is_valid(content, ['email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
+        if not content_is_valid(content, ['password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications']):
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
+            
+        # Provide default values for optional fields
+        content['profile_pic_url'] = content.get('profile_pic_url', '')
+        content['phone_number'] = content.get('phone_number', '')
+        content['preferred_notification_time'] = content.get('preferred_notification_time', None)
 
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
         cursor.execute(user_query, (username,))
@@ -211,10 +292,11 @@ def update_user(username):
 
         update_query = """
             UPDATE GroceryApp.Users
-            SET user_name = %s, email = %s, phone_number = %s, receive_sms_notifications = %s, receive_email_notifications = %s, preferred_notification_time = %s
+            SET user_name = %s, password = %s, first_name = %s, last_name = %s, profile_pic_url = %s, email = %s, phone_number = %s, receive_sms_notifications = %s, receive_email_notifications = %s, preferred_notification_time = %s
             WHERE user_id = %s
             """
-        cursor.execute(update_query, (content['user_name'], content['email'], content['phone_number'], content['receive_sms_notifications'], user['user_id'], user['receive_email_notifications'], user['preferred_notification_time']))
+        hashed_password = bcrypt.generate_password_hash(content['password']).decode('utf-8')
+        cursor.execute(update_query, (username, hashed_password, content['first_name'], content['last_name'], content['profile_pic_url'], content['email'], content['phone_number'], content['receive_sms_notifications'], user['user_id'], user['receive_email_notifications'], user['preferred_notification_time']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "User updated successfully"}), 200
@@ -285,7 +367,7 @@ def get_groceries(username):
         200 if groceries successfully returned
         404 if user not found or user has no groceries
         500 Internal Server Error: Database error.
-    """
+    """   
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -803,6 +885,10 @@ def get_location(location_name):
         if not results:
             conn.close()
             return jsonify({"Error": "No recipe with that name exists"}), 404
+            
+        # Handle nullable recipe_notification
+        results = results[0]
+        results['recipe_notification'] = results.get('recipe_notification', None) or ''
 
         conn.close()
         return jsonify(results), 200
@@ -832,8 +918,11 @@ def add_recipe(location_name):
         500 Internal Server Error: Database error.
     """
     data = request.get_json()
-    if not content_is_valid(data, ['recipe_name', 'recipe_url', 'user_id', 'recipe_notification']):
+    if not content_is_valid(data, ['recipe_name', 'recipe_url', 'user_id']):
         return jsonify(CONTENT_NOT_VALID), 400
+        
+     # Provide default values for optional fields
+    data['recipe_notification'] = data.get('recipe_notification', False)
 
     try:
         conn = get_db_connection()
