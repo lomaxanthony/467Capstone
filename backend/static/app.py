@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory, redirect, url_for, render_template, session, flash
+from flask import Flask, jsonify, request, send_from_directory #, redirect, url_for, render_template, session, flash
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
@@ -148,7 +148,8 @@ def add_user():
     try:
         content = request.get_json()
         
-        if not content_is_valid(content, ['user_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
+
+        if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications']):
             return jsonify(CONTENT_NOT_VALID), 400
         
         conn = get_db_connection()
@@ -178,6 +179,54 @@ def add_user():
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+<<<<<<< HEAD
+=======
+@app.route('/api/login', methods=['POST'])
+def login():
+    """
+    "Login" depending on return status
+    
+    user_name and password are passed in body
+    
+    Returns:
+        200 if successful
+        400 body content Invalid
+        404 user not found
+        401 password incorrect
+        500 database error
+    """
+    try:
+        content = request.get_json()
+        
+        if not content_is_valid(content, ['user_name', 'password']):
+            return jsonify(CONTENT_NOT_VALID), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+       
+        user_query = """SELECT user_id AS id, user_name AS username, password as hashed_password
+            FROM GroceryyApp.Users
+            WHERE user_name = %s
+            """
+        cursor.execute(user_query, (content['user_name']))
+        user = cursor.fetchall()
+        if not user:
+            conn.close()
+            return jsonify(USER_NOT_FOUND), 404
+        hashed_password = user[0]['hashed_password']
+        conn.close()
+        
+        if bcrypt.check_password_hash(hashed_password, content['password']):
+            return jsonify({'Message': 'Login successful'})
+        else:
+            return jsonify({'Message': 'Invalid password'}), 401
+    except mysql.connector.Error as err:
+        # Database error
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+>>>>>>> 90435a93d4ec2a3f20f0c09c961f1ec61576e1e3
 
 @app.route('/api/<username>', methods=['PUT'])
 def update_user(username):
@@ -287,7 +336,7 @@ def delete_user(username):
 ################################################################
 @app.route('/api/groceries/<username>', methods=['GET'])
 def get_groceries(username):
-     """
+    """
     Returns grocery items for the specified user.
    
     username is passed in URL
@@ -496,9 +545,9 @@ def update_grocery(inventory_id):
         
 
 @app.route('/api/groceries/<username>', methods=['DELETE'])
-def delete_user(username):
+def delete_grocery(username):
     """
-    Deletes a user.
+    Deletes a grocery item from GroceryApp.Inventory.
    
     username is passed in URL
 
@@ -617,7 +666,7 @@ def add_food_item(food_name):
 
 
 @app.route('/api/<food_name>', methods=['DELETE'])
-def delete_user(food_name):
+def delete_food_item(food_name):
     """
     Deletes a food item.
    
@@ -787,7 +836,7 @@ def delete_location(location_name):
 # GET, POST, DELETE from Recipes #
 ##################################
 @app.route('/api/<recipe_name>', methods=['GET'])
-def get_location(location_name):
+def get_recipe(recipe_name):
     """
     Returns information for recipe.
    
@@ -826,7 +875,7 @@ def get_location(location_name):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/api/recipe', methods=['POST'])
-def add_recipe(location_name):
+def add_recipe():
     """
     Create a new recipe
     Request Body:
@@ -991,7 +1040,7 @@ def add_ingredient(location_name):
 
 
 @app.route('/api/ingredients/<recipe_id>', methods=['DELETE'])
-def delete_ingredient(ingredient_name):
+def delete_ingredient(recipe_id):
     """
     Deletes an ingredient GroceryApp.Ingredients
    
