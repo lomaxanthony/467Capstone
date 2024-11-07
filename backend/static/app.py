@@ -179,8 +179,6 @@ def add_user():
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-<<<<<<< HEAD
-=======
 @app.route('/api/login', methods=['POST'])
 def login():
     """
@@ -226,7 +224,6 @@ def login():
     except Exception as e:
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
->>>>>>> 90435a93d4ec2a3f20f0c09c961f1ec61576e1e3
 
 @app.route('/api/<username>', methods=['PUT'])
 def update_user(username):
