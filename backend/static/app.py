@@ -327,7 +327,7 @@ def delete_user(username):
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-'''
+
 ################################################################
 # GET, POST, PUT, DELETE User's Groceries (in GroceryApp.Inventory) #
 ################################################################
@@ -1083,7 +1083,7 @@ def serve_vue(path):
         return send_from_directory('static', path)
     return send_from_directory('static', 'index.html')
 
-'''
+
 if __name__ == '__main__':
     # Initialize the database connection
     conn = get_db_connection()
