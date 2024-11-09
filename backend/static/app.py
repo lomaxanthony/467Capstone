@@ -107,7 +107,7 @@ def get_user_info(username):
             FROM GroceryApp.Users
             WHERE user_name = %s
             """
-        cursor.execute(user_query, (username))
+        cursor.execute(user_query, (username,))
         user = cursor.fetchall()
         if not user:
             conn.close()
@@ -221,7 +221,7 @@ def login():
             FROM GroceryyApp.Users
             WHERE user_name = %s
             """
-        cursor.execute(user_query, (content['user_name']))
+        cursor.execute(user_query, (content['user_name'],))
         user = cursor.fetchall()
         if not user:
             conn.close()
@@ -799,7 +799,7 @@ def add_location(location_name):
             INSERT INTO GroceryApp.Locations (location_name)
             VALUES (%s)
         """
-        cursor.execute(insert_query, (data['location_name']))
+        cursor.execute(insert_query, (data['location_name'],))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Location item created successfully"}), 201
