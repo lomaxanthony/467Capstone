@@ -107,7 +107,7 @@ def get_user_info(username):
             FROM GroceryApp.Users
             WHERE user_name = %s
             """
-        cursor.execute(user_query, (username))
+        cursor.execute(user_query, (username,))
         user = cursor.fetchall()
         if not user:
             conn.close()
@@ -179,7 +179,7 @@ def add_user():
         # Insert new grocery item
         insert_query = """
             INSERT INTO Users (user_name, password, first_name, last_name, profile_pic_url, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(insert_query, (content['user_name'], hashed_password, content['first_name'], content['last_name'], content['profile_pic_url'], content['email'], content['phone_number'], content['receive_sms_notifications'], content['receive_email_notifications'], content['preferred_notification_time']))
         conn.commit()
@@ -221,7 +221,7 @@ def login():
             FROM GroceryyApp.Users
             WHERE user_name = %s
             """
-        cursor.execute(user_query, (content['user_name']))
+        cursor.execute(user_query, (content['user_name'],))
         user = cursor.fetchall()
         if not user:
             conn.close()
@@ -285,7 +285,6 @@ def update_user(username):
             conn.close()
             return jsonify({"Error": "User not found"}), 404
 
-        content = request.get_json()
         if not content:
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
@@ -296,7 +295,7 @@ def update_user(username):
             WHERE user_id = %s
             """
         hashed_password = bcrypt.generate_password_hash(content['password']).decode('utf-8')
-        cursor.execute(update_query, (username, hashed_password, content['first_name'], content['last_name'], content['profile_pic_url'], content['email'], content['phone_number'], content['receive_sms_notifications'], user['user_id'], user['receive_email_notifications'], user['preferred_notification_time']))
+        cursor.execute(update_query, (username, hashed_password, content['first_name'], content['last_name'], content['profile_pic_url'], content['email'], content['phone_number'], content['receive_sms_notifications'], content['receive_email_notifications'], content['preferred_notification_time']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "User updated successfully"}), 200
@@ -648,8 +647,8 @@ def get_food_item(food_name):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/<food_name>', methods=['POST'])
-def add_food_item(food_name):
+@app.route('/api/item', methods=['POST'])
+def add_food_item():
     """
     Create a new food item
     Request Body:
@@ -775,7 +774,7 @@ def get_location(location_name):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/api/location', methods=['POST'])
-def add_location(location_name):
+def add_location():
     """
     Create a new location
     Request Body:
@@ -799,7 +798,7 @@ def add_location(location_name):
             INSERT INTO GroceryApp.Locations (location_name)
             VALUES (%s)
         """
-        cursor.execute(insert_query, (data['location_name']))
+        cursor.execute(insert_query, (data['location_name'],))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Location item created successfully"}), 201
@@ -930,7 +929,7 @@ def add_recipe():
         
         insert_query = """
             INSERT INTO GroceryApp.Recipes (recipe_name, recipe_url, user_id, recipe_notification)
-            VALUES (%s)
+            VALUES (%s, %s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_name'], data['recipe_url'], data['user_id'], data['recipe_notification']))
         conn.commit()
@@ -1030,7 +1029,7 @@ def get_ingredients(recipe_id):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/api/ingredient', methods=['POST'])
-def add_ingredient(location_name):
+def add_ingredient():
     """
     Create a new ingredient
     Request Body:
@@ -1054,7 +1053,7 @@ def add_ingredient(location_name):
         
         insert_query = """
             INSERT INTO GroceryApp.Ingredients (recipe_id, food_id, quantity_required)
-            VALUES (%s)
+            VALUES (%s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_id'], data['food_id'], data['quantity_required']))
         conn.commit()
