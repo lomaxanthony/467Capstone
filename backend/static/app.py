@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, send_from_directory #, redirect, url_for, render_template, session, flash
 from flask_cors import CORS
+from flask_bcrypt import Bcrypt
 import mysql.connector
 from mysql.connector import Error
 import os
@@ -11,6 +12,7 @@ from datetime import timedelta
 app = Flask(__name__, static_folder='static', static_url_path='')
 
 CORS(app)    #Allow frontend to communicate with the backend
+bcrypt = Bcrypt(app)
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
@@ -31,14 +33,22 @@ CONTENT_NOT_VALID = {"Error": "Invalid request body"}
 #    'password': 'password',
 #    'host': 'localhost',
 #    'database': 'GroceryApp'
-#}
 
 
 # Returns True if content is valid False otherwise
-def content_is_valid(content, list_to_be_valid):
+def content_is_valid(content, list_to_be_valid, optional_fields=None):
+    if optional_fields is None:
+        optional_fields = []
+    
     for item in list_to_be_valid:
         if item not in content:
             return False
+
+    full_list = list_to_be_valid + optional_fields
+    for item in content:
+        if item not in full_list:
+            return False
+
     return True
 
 
@@ -152,6 +162,9 @@ def add_user():
         if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications']):
             return jsonify(CONTENT_NOT_VALID), 400
         
+        hashed_password = bcrypt.generate_password_hash(content['password'])
+
+
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
@@ -162,12 +175,12 @@ def add_user():
             conn.close()
             return jsonify({"Error": "User already exists"}), 409
    
-        # Insert new grocery item
+        # Insert new user
         insert_query = """
-            INSERT INTO Users (user_name, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO Users (user_name, password, first_name, last_name, profile_pic_url, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['user_name'], content['email'], content['phone_number'], content['receive_sms_notifications'], content['receive_email_notifications'], content['preferred_notification_time']))
+        cursor.execute(insert_query, (content['user_name'], hashed_password, content['first_name'], content['last_name'], content.get('profile_pic_url'), content['email'], content.get('phone_number'), content['receive_sms_notifications'], content['receive_email_notifications'], content.get('preferred_notification_time')))
         conn.commit()
         conn.close()
         return jsonify({"Message": "User created successfully"}), 201
@@ -203,10 +216,10 @@ def login():
         cursor = conn.cursor(dictionary=True)
        
         user_query = """SELECT user_id AS id, user_name AS username, password as hashed_password
-            FROM GroceryyApp.Users
+            FROM GroceryApp.Users
             WHERE user_name = %s
             """
-        cursor.execute(user_query, (content['user_name']))
+        cursor.execute(user_query, (content['user_name'],))
         user = cursor.fetchall()
         if not user:
             conn.close()
@@ -248,9 +261,10 @@ def update_user(username):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
+
         content = request.get_json()
-        if not content_is_valid(content, ['email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
+
+        if not content_is_valid(content, [], ['email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
 
@@ -261,17 +275,28 @@ def update_user(username):
             conn.close()
             return jsonify({"Error": "User not found"}), 404
 
-        content = request.get_json()
         if not content:
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
 
-        update_query = """
+        update_fields = []
+        update_values = []
+        for item in content:
+            if item in ['email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']:
+                update_fields.append(f"{item} = %s")
+                update_values.append(content[item])
+
+        if not update_fields:
+            return jsonify({"Error": "None valid fields for update"}), 400
+
+        update_values.append(user['user_id'])
+
+        update_query = f"""
             UPDATE GroceryApp.Users
-            SET user_name = %s, email = %s, phone_number = %s, receive_sms_notifications = %s, receive_email_notifications = %s, preferred_notification_time = %s
+            SET {', '.join(update_fields)}
             WHERE user_id = %s
             """
-        cursor.execute(update_query, (content['user_name'], content['email'], content['phone_number'], content['receive_sms_notifications'], user['user_id'], user['receive_email_notifications'], user['preferred_notification_time']))
+        cursor.execute(update_query, update_values)
         conn.commit()
         conn.close()
         return jsonify({"Message": "User updated successfully"}), 200
@@ -623,8 +648,8 @@ def get_food_item(food_name):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/<food_name>', methods=['POST'])
-def add_food_item(food_name):
+@app.route('/api/item', methods=['POST'])
+def add_food_item():
     """
     Create a new food item
     Request Body:
@@ -750,7 +775,7 @@ def get_location(location_name):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/api/location', methods=['POST'])
-def add_location(location_name):
+def add_location():
     """
     Create a new location
     Request Body:
@@ -774,7 +799,7 @@ def add_location(location_name):
             INSERT INTO GroceryApp.Locations (location_name)
             VALUES (%s)
         """
-        cursor.execute(insert_query, (data['location_name']))
+        cursor.execute(insert_query, (data['location_name'],))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Location item created successfully"}), 201
@@ -898,7 +923,7 @@ def add_recipe():
         
         insert_query = """
             INSERT INTO GroceryApp.Recipes (recipe_name, recipe_url, user_id, recipe_notification)
-            VALUES (%s)
+            VALUES (%s, %s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_name'], data['recipe_url'], data['user_id'], data['recipe_notification']))
         conn.commit()
@@ -998,7 +1023,7 @@ def get_ingredients(recipe_id):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/api/ingredient', methods=['POST'])
-def add_ingredient(location_name):
+def add_ingredient():
     """
     Create a new ingredient
     Request Body:
@@ -1022,7 +1047,7 @@ def add_ingredient(location_name):
         
         insert_query = """
             INSERT INTO GroceryApp.Ingredients (recipe_id, food_id, quantity_required)
-            VALUES (%s)
+            VALUES (%s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_id'], data['food_id'], data['quantity_required']))
         conn.commit()
