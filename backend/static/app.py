@@ -119,6 +119,7 @@ def get_user_info(username):
             """
         cursor.execute(user_query, (username,))
         user = cursor.fetchone()
+
         if not user:
             conn.close()
             return jsonify(USER_NOT_FOUND), 404
@@ -159,7 +160,7 @@ def add_user():
         content = request.get_json()
         
 
-        if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications']):
+        if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications'], ['phone_number', 'profile_pic_url', 'preferred_notification_time']):
             return jsonify(CONTENT_NOT_VALID), 400
         
         hashed_password = bcrypt.generate_password_hash(content['password'])
@@ -220,6 +221,7 @@ def login():
             WHERE user_name = %s
             """
         cursor.execute(user_query, (content['user_name'],))
+     
         user = cursor.fetchall()
         if not user:
             conn.close()
@@ -800,6 +802,7 @@ def add_location():
             VALUES (%s)
         """
         cursor.execute(insert_query, (data['location_name'],))
+        cursor.execute(insert_query, (data['location_name'],))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Location item created successfully"}), 201
@@ -924,6 +927,7 @@ def add_recipe():
         insert_query = """
             INSERT INTO GroceryApp.Recipes (recipe_name, recipe_url, user_id, recipe_notification)
             VALUES (%s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_name'], data['recipe_url'], data['user_id'], data['recipe_notification']))
         conn.commit()
@@ -1047,6 +1051,7 @@ def add_ingredient():
         
         insert_query = """
             INSERT INTO GroceryApp.Ingredients (recipe_id, food_id, quantity_required)
+            VALUES (%s, %s, %s)
             VALUES (%s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_id'], data['food_id'], data['quantity_required']))
