@@ -1,12 +1,3 @@
-<!-- 
-
-Added a welcome container with a quick overview of the app. We can add more to this is we need. Just wanted a quick landing page.
-I have a "Get Started" button that goes to myPantry page. But we could also have a log-in splash page. Just some ideas :)
-
--->
-
-
-
 <template>
   <div class="welcome-container">
     <h1 class="app-title">Welcome to Grocery Buddy</h1>
@@ -20,8 +11,12 @@ I have a "Get Started" button that goes to myPantry page. But we could also have
       <li>🧮 Get stats on food item usage</li>
     </ul>
 
-    <button @click="goToGroceryList" class="btn get-started">
+    <button @click="goToGroceryList" class="btn1 get-started">
       Get Started
+    </button>
+
+    <button @click="goToProfile" class="btn2 get-started">
+      Profile Page
     </button>
   </div>
 </template>
@@ -34,50 +29,80 @@ export default {
     const router = useRouter();
 
     const goToGroceryList = () => {
-      router.push('/add'); 
+      router.push('/add');
     };
 
-    return { goToGroceryList };
-  },
+    const goToProfile = () => {
+      router.push({ name: 'profile' });
+    };
+
+    return {
+      goToGroceryList,
+      goToProfile
+    };
+  }
 };
 </script>
 
 <style scoped>
 .welcome-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--darkerMountainShadow);
-  color: #ffffff;
   text-align: center;
-  padding: 5%;
-  margin-top: 8%;
+  padding: 20px;
 }
 
 .app-title {
-  font-size: 2.5rem;
+  font-size: 2.5em;
   margin-bottom: 10px;
-  font-weight: bold;
+}
+
+.tagline {
+  font-size: 1.5em;
+  margin-bottom: 20px;
 }
 
 .description {
-  font-size: 1rem;
-  margin-bottom: 30px;
-  flex-direction: row;
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.feature-list {
+  list-style-type: none;
+  padding: 0;
+  margin-bottom: 20px;
+}
+
+.feature-list li {
+  font-size: 1.1em;
+  margin-bottom: 10px;
+}
+
+.btn1 {
+  background-color: #4caf50;
+  color: white;
+  border: solid 3px --var glacier;    
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 1em;
+  margin: 20px 0; 
+}
+
+.btn2 {
+  background-color: #4caf50;
+  color: white;
+  border: solid 3px --var glacier;    
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 1em;
+  margin: 20px 0; 
+}
+
+.btn:hover {
+  background-color: #45a049;
 }
 
 .get-started {
-  background-color: var(--freshVeg);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s;
-}
-
-.get-started:hover {
-  background-color: #45a047;
+  margin-top: 20px;
 }
 </style>
