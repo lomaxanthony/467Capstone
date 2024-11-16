@@ -210,7 +210,7 @@ def login():
         400 body content Invalid
         404 user not found
         401 password incorrect
-        500 database error
+        500 database erro
     """
     try:
         content = request.get_json()
