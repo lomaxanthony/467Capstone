@@ -117,7 +117,7 @@ def get_user_info(username):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
        
-        user_query = """SELECT user_id AS id, user_name AS username, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time
+        user_query = """SELECT user_id AS id, user_name AS username, first_name, last_name, profile_pic_url, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time
             FROM GroceryApp.Users
             WHERE user_name = %s
             """
@@ -149,6 +149,9 @@ def add_user():
     Expected:
         user_name (string)
         password (string)
+        first_name (string)
+        last_name (string)
+        profile_pic_url (string)
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
@@ -168,7 +171,7 @@ def add_user():
         if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications'], ['phone_number', 'profile_pic_url', 'preferred_notification_time']):
             return jsonify(CONTENT_NOT_VALID), 400
         
-        hashed_password = bcrypt.generate_password_hash(content['password'])
+        hashed_password = bcrypt.generate_password_hash(content['password']).decode('utf-8')
 
 
         conn = get_db_connection()
@@ -255,9 +258,14 @@ def update_user(username):
     Expected:
         user_name (string) (Passed in URL)
 
+        password (string)
+        first_name (string)
+        last_name (string)
+        profile_pic_url (string)
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
+        preferred_notification_time (TIME)
 
     Returns:
         200 if successful
@@ -271,7 +279,7 @@ def update_user(username):
 
         content = request.get_json()
 
-        if not content_is_valid(content, [], ['email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
+        if not content_is_valid(content, [], ['password', 'first_name', 'last_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
 
@@ -289,9 +297,14 @@ def update_user(username):
         update_fields = []
         update_values = []
         for item in content:
-            if item in ['email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']:
-                update_fields.append(f"{item} = %s")
-                update_values.append(content[item])
+            if item in ['password', 'first_name', 'last_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']:
+                if item == 'password':
+                    hashed_password = bcrypt.generate_password_hash(content[item]).decode('utf-8')
+                    update_fields.append(f"{item} = %s")
+                    update_values.append(hashed_password)
+                else:
+                    update_fields.append(f"{item} = %s")
+                    update_values.append(content[item])
 
         if not update_fields:
             return jsonify({"Error": "None valid fields for update"}), 400
