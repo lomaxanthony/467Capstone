@@ -37,16 +37,20 @@ CONTENT_NOT_VALID = {"Error": "Invalid request body"}
 
 # Returns True if content is valid False otherwise
 def content_is_valid(content, list_to_be_valid, optional_fields=None):
+    if list_to_be_valid is None:
+        list_to_be_valid = []
     if optional_fields is None:
         optional_fields = []
-    
-    for item in list_to_be_valid:
-        if item not in content:
+
+    # Ensure all required fields are present
+    for field in list_to_be_valid:
+        if field not in content:
             return False
 
-    full_list = list_to_be_valid + optional_fields
-    for item in content:
-        if item not in full_list:
+    # Ensure no unexpected fields are present
+    allowed_fields = set(list_to_be_valid + optional_fields)
+    for key in content.keys():
+        if key not in allowed_fields:
             return False
 
     return True
@@ -100,7 +104,7 @@ def execute_sql_file(connection, sql_file_path):
 @app.route('/api/<username>', methods=['GET'])
 def get_user_info(username):
     """
-    Returns user_id, user_name, email, phone number, SMS notifications preference, email notifications preference, and preferred notification time
+    Returns user_id, user_name, first_name, last_name, profile_pic_url, email, phone number, SMS notifications preference, email notifications preference, and preferred notification time
    
     username is passed in URL
    
@@ -144,6 +148,7 @@ def add_user():
     User info is passed in body of message.
     Expected:
         user_name (string)
+        password (string)
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
@@ -802,7 +807,6 @@ def add_location():
             VALUES (%s)
         """
         cursor.execute(insert_query, (data['location_name'],))
-        cursor.execute(insert_query, (data['location_name'],))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Location item created successfully"}), 201
@@ -927,7 +931,6 @@ def add_recipe():
         insert_query = """
             INSERT INTO GroceryApp.Recipes (recipe_name, recipe_url, user_id, recipe_notification)
             VALUES (%s, %s, %s, %s)
-            VALUES (%s, %s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_name'], data['recipe_url'], data['user_id'], data['recipe_notification']))
         conn.commit()
@@ -1051,7 +1054,6 @@ def add_ingredient():
         
         insert_query = """
             INSERT INTO GroceryApp.Ingredients (recipe_id, food_id, quantity_required)
-            VALUES (%s, %s, %s)
             VALUES (%s, %s, %s)
         """
         cursor.execute(insert_query, (data['recipe_id'], data['food_id'], data['quantity_required']))
