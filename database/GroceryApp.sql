@@ -140,6 +140,29 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Ingredients` (
 
 CREATE INDEX `idx_ingredients_food_id` ON `GroceryApp`.`Ingredients` (`food_id` ASC) VISIBLE;
 
+---------------------------------------------------------
+-- Table `GroceryApp`.`UserUsage`
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `GroceryApp`.`UserUsage` (
+  `usage_id` INT NOT NULL AUTO_INCREMENT,
+  `user_id` INT NOT NULL,
+  `food_id` INT NOT NULL,
+  `times_used` INT NOT NULL DEFAULT 0,
+  `times_spoiled` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`usage_id`),
+  CONSTRAINT `fk_userusage_user_id`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `GroceryApp`.`Users` (`user_id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_userusage_food_id`
+    FOREIGN KEY (`food_id`)
+    REFERENCES `GroceryApp`.`AllFoods` (`food_id`)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX `idx_userusage_user_id` ON `GroceryApp`.`UserUsage` (`user_id` ASC) VISIBLE;
+CREATE INDEX `idx_userusage_food_id` ON `GroceryApp`.`UserUsage` (`food_id` ASC) VISIBLE;
+
 -- -----------------------------------------------------
 -- View `GroceryApp`.`RecipeSuggestions`
 -- -----------------------------------------------------
