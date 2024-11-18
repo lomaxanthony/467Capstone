@@ -8,11 +8,13 @@ import sys
 import json
 from db_config import get_db_connection
 from datetime import timedelta
+from google.cloud import vision
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 
 CORS(app)    #Allow frontend to communicate with the backend
-bcrypt = Bcrypt(app)
+bcrypt = Bcrypt(app) # For hashing password
+vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
@@ -97,6 +99,44 @@ def execute_sql_file(connection, sql_file_path):
     conn.close()
     print("Database initialized successfully.")"""
 
+############################################################
+# Route to recognize grocery items using Google Vision API #
+############################################################
+@app.route('/api/recognize', methods=['POST'])
+def recognize_image():
+    """
+    Recognizes grocery items from an uploaded image using Google Vision API.
+    
+    Returns:
+        200 if successful with recognized labels
+        400 if the request is invalid
+        500 for internal server errors
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({"Error": "No image file provided"}), 400
+        
+        # Get the uploaded image file
+        image_file = request.files['image']
+
+        # Google vision expects image in form of bytes
+        image_bytes = image_file.read()
+
+        # Create an image object for Google Vision API
+        image = vision.Image(content=image_bytes)
+
+        # Use the Vision API to detect labels
+        response = vision_client.label_detection(image=image)
+
+        if response.error.message:
+            return jsonify({"Error": response.error.message}), 500
+
+        # Extract labels from the response
+        labels = [label.description for label in response.label_annotations]
+        return jsonify({"recognized_items": labels}), 200
+
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred in recognize_image(): {str(e)}"}), 500
 
 ###################################
 # GET, POST, PUT, and DELETE User #
@@ -1117,6 +1157,160 @@ def delete_ingredient(recipe_id):
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+#######################################
+# Two POSTs and one GET for UserUsage #
+#######################################
+@app.route('/api/use', methods=['POST'])
+def add_use():
+    """
+    Creates UserUsage instance if instance does not already exist and sets times_used to 1. If instance does exist, adds 1 to times_used.
+   
+    Expected:
+        user_id (int)
+        food_id (int)
+       
+    Returns:
+        201 if successful
+        400 body content Invalid
+        500 Internal Server error or database error
+    """
+    try:
+        content = request.get_json()
+        
+
+        if not content_is_valid(content, ['user_id', 'food_id']):
+            return jsonify(CONTENT_NOT_VALID), 400
+        
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Insert or update usage
+        insert_query = """
+            INSERT INTO UserUsage (user_id, food_id, times_used)
+            VALUES (%s, %s, 1)
+            ON DUPLICATE KEY UPDATE times_used = times_used + 1
+        """
+        cursor.execute(insert_query, (content['user_id'], content['food_id']))
+        conn.commit()
+        conn.close()
+        return jsonify({"Message": "Use added successfully"}), 201
+       
+    except mysql.connector.Error as err:
+        # Database error
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+@app.route('/api/spoil', methods=['POST'])
+def add_spoil():
+    """
+    Creates UserUsage instance if instance does not already exist and sets times_spoiled to 1. If instance does exist, adds 1 to times_spoiled.
+   
+    Expected:
+        user_id (int)
+        food_id (int)
+       
+    Returns:
+        201 if successful
+        400 body content Invalid
+        500 Internal Server error or database error
+    """
+    try:
+        content = request.get_json()
+        
+
+        if not content_is_valid(content, ['user_id', 'food_id']):
+            return jsonify(CONTENT_NOT_VALID), 400
+        
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Insert or update usage
+        insert_query = """
+            INSERT INTO UserUsage (user_id, food_id, times_spoiled)
+            VALUES (%s, %s, 1)
+            ON DUPLICATE KEY UPDATE times_spoiled = times_spoiled + 1
+        """
+        cursor.execute(insert_query, (content['user_id'], content['food_id']))
+        conn.commit()
+        conn.close()
+        return jsonify({"Message": "Spoil added successfully"}), 201
+       
+    except mysql.connector.Error as err:
+        # Database error
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+
+@app.route('/api/suggestions/<user_name>', methods=['GET'])
+def get_suggestions(user_name):
+    """
+    Retrieves top 5 spoiled and used foods for the given user.
+   
+    Expected: user_name passed in URL
+       
+    Returns:
+        200 if successful
+        404 user has no instances of UserUsage
+        500 Internal Server error or database error
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        query = """
+            (
+              SELECT 
+                food_id,
+                times_spoiled,
+                'spoiled' as type
+              FROM 
+                UserUsage
+              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+              ORDER BY 
+                times_spoiled DESC
+              LIMIT 5
+            )
+            UNION ALL
+            (
+              SELECT 
+                food_id,
+                times_used,
+                'used' as type
+              FROM 
+                UserUsage
+              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+              ORDER BY 
+                times_used DESC
+              LIMIT 5
+            )
+        """
+        cursor.execute(query, (user_name, user_name))
+        result = cursor.fetchall()
+        
+        if not result:
+            conn.close()
+            return jsonify({"Error": "No suggestions found"}), 404
+        
+        top_spoiled = [item for item in result if item['type'] == 'spoiled'] # List comprehension
+        top_used = [item for item in result if item['type'] == 'used']
+        
+        conn.close()
+        return jsonify({
+            "top_spoiled": top_spoiled,
+            "top_used": top_used
+        }), 200
+       
+    except mysql.connector.Error as err:
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
