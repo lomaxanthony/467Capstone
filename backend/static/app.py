@@ -445,9 +445,9 @@ def delete_user():
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-################################################################
+#####################################################################
 # GET, POST, PUT, DELETE User's Groceries (in GroceryApp.Inventory) #
-################################################################
+#####################################################################
 @app.route('/api/groceries', methods=['GET'])
 def get_groceries():
     """
@@ -727,7 +727,7 @@ def get_food_item(food_name):
         cursor = conn.cursor(dictionary=True)
 
         query = """
-            SELECT food_id, food_name, expiration_days, quantity, food_type
+            SELECT food_id, food_name, expiration_days, quantity, food_type, recipe_id
             FROM GroceryApp.AllFoods
             WHERE food_name = %s
         """
@@ -758,26 +758,37 @@ def add_food_item():
     {
         "food_name": "string",
         "expiration_days": "int",
-        "food_type": "string"
+        "food_type": "string",
+        'recipe_id': 'string'
     }
     Returns:
         201 Created: New grocery item created successfully.
         400 Bad Request: Invalid request body.
+        404 recipe_id not found
         500 Internal Server Error: Database error.
     """
 
     # Get food ID
     data = request.get_json()
-    if not content_is_valid(data, ['food_name', 'expiration_days', 'food_type']):
+    if not content_is_valid(data, ['food_name', 'expiration_days', 'food_type', 'recipe_id']):
         return jsonify(CONTENT_NOT_VALID), 400
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # Check if recipe ID exists
+        recipe_query = "SELECT recipe_id FROM GroceryApp.Recipes WHERE recipe_id = %s"
+        cursor.execute(recipe_query, (data['recipe_id'],))
+        recipe = cursor.fetchone()
+        if not recipe:
+            conn.close()
+            return jsonify({"Error": "Recipe ID not found"}), 404
+        
         insert_query = """
-            INSERT INTO GroceryApp.AllFoods (food_name, expiration_days, food_type)
-            VALUES (%s, %s, %s)
+            INSERT INTO GroceryApp.AllFoods (food_name, expiration_days, food_type, 'recipe_id')
+            VALUES (%s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (data['food_name'], data['expiration_days'], data['food_type']))
+        cursor.execute(insert_query, (data['food_name'], data['expiration_days'], data['food_type'], data['recipe_id']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Food item created successfully"}), 201
@@ -1133,11 +1144,11 @@ def delete_recipe(recipe_name):
             conn.close()
             return jsonify({"Error": "Location not found"}), 404
         
-        # Delete records from related table (e.g., Inventory)
-        delete_query_inventory = "DELETE FROM GroceryApp.Ingredients WHERE recipe_id = %s"
-        cursor.execute(delete_query_inventory, (user['recipe_id'],))
+        # Delete records from related table (e.g., Ingredients)
+        delete_query_ingredients = "DELETE FROM GroceryApp.Ingredients WHERE recipe_id = %s"
+        cursor.execute(delete_query_ingredients, (user['recipe_id'],))
         
-        # Delete records from Locations
+        # Delete records from Recipes
         delete_query = "DELETE FROM GroceryApp.Recipes WHERE recipe_id = %s"
         cursor.execute(delete_query, (user['recipe_id'],))
        
