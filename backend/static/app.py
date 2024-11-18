@@ -126,7 +126,7 @@ def recognize_image():
         image = vision.Image(content=image_bytes)
 
         # Use the Vision API to detect labels
-        response = vision_client.label_detection(image=image)
+        response = vision_client.label_detection(image=image, max_results=3)
 
         if response.error.message:
             return jsonify({"Error": response.error.message}), 500
