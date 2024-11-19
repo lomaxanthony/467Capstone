@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory #, redirect, url_for, render_template, session, flash
+from flask import Flask, jsonify, request, send_from_directory, redirect, url_for, render_template, session, flash
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 import mysql.connector
@@ -82,6 +82,93 @@ def execute_sql_file(connection, sql_file_path):
     cursor.close()
     conn.close()
     print("Database initialized successfully.")"""
+
+# # Example route to set a session variable
+# @app.route('/set_session/<username>')
+# def set_session(username):
+#     session['username'] = username
+#     return jsonify({"message": f"Session set for user {username}"})
+
+#########################################
+# Login and Logout functions, both POST #
+#########################################
+@app.route('/api/login', methods=['POST'])
+def login():
+    """
+    "Login" depending on return status
+    
+    user_name and password are passed in body
+    
+    Returns:
+        200 if successful
+        400 body content Invalid
+        404 user not found
+        401 password incorrect
+        500 database error
+    """
+    try:
+        content = request.get_json()
+        
+        if not content_is_valid(content, ['user_name', 'password']):
+            return jsonify(CONTENT_NOT_VALID), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+       
+        user_query = """SELECT user_id AS id, user_name AS username, password as hashed_password
+            FROM GroceryApp.Users
+            WHERE user_name = %s
+            """
+        cursor.execute(user_query, (content['user_name'],))
+     
+        user = cursor.fetchall()
+        if not user:
+            conn.close()
+            return jsonify(USER_NOT_FOUND), 404
+        hashed_password = user[0]['hashed_password']
+        conn.close()
+        
+        if bcrypt.check_password_hash(hashed_password, content['password']):
+            session["username"] = user[0]['username']
+            return jsonify({'Message': 'Login successful'})
+        else:
+            return jsonify({'Message': 'Invalid password'}), 401
+    except mysql.connector.Error as err:
+        # Database error
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    """
+    Logout by removing username from session
+    
+    Returns:
+        200 if successful
+        401 user not logged in
+        500 server error
+    """
+    try:
+        if 'username' not in session:
+            return jsonify({'Message': 'You are not logged in'}), 401
+        
+        session.pop('username', None)
+        return jsonify({'Message': 'Logged out successfully'}), 200
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+    
+####################################################################################
+# Check if user is logged in for session management                                #
+####################################################################################
+
+@app.route('/api/check_login', methods=['GET'])
+def check_login():
+    if 'user' in session:
+        return jsonify({"logged_in": True, "user": session['user']}), 200
+    else:
+        return jsonify({"logged_in": False}), 200
 
 
 ####################################################################################
@@ -186,53 +273,6 @@ def add_user():
         conn.close()
         return jsonify({"Message": "User created successfully"}), 201
        
-    except mysql.connector.Error as err:
-        # Database error
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        # General error
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
-        
-
-@app.route('/api/login', methods=['POST'])
-def login():
-    """
-    "Login" depending on return status
-    
-    user_name and password are passed in body
-    
-    Returns:
-        200 if successful
-        400 body content Invalid
-        404 user not found
-        401 password incorrect
-        500 database error
-    """
-    try:
-        content = request.get_json()
-        
-        if not content_is_valid(content, ['user_name', 'password']):
-            return jsonify(CONTENT_NOT_VALID), 400
-            
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-       
-        user_query = """SELECT user_id AS id, user_name AS username, password as hashed_password
-            FROM GroceryyApp.Users
-            WHERE user_name = %s
-            """
-        cursor.execute(user_query, (content['user_name'],))
-        user = cursor.fetchall()
-        if not user:
-            conn.close()
-            return jsonify(USER_NOT_FOUND), 404
-        hashed_password = user[0]['hashed_password']
-        conn.close()
-        
-        if bcrypt.check_password_hash(hashed_password, content['password']):
-            return jsonify({'Message': 'Login successful'})
-        else:
-            return jsonify({'Message': 'Invalid password'}), 401
     except mysql.connector.Error as err:
         # Database error
         return jsonify({"Error": f"Database error: {err}"}), 500
