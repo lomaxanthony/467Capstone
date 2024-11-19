@@ -1,10 +1,3 @@
-<!-- 
- 
-Added a Bootstrap NavBar that we can change if we want. Just wanted some okay looking formating to use while testing
-
--->
-
-
 <template>
   <div id="app">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -42,33 +35,50 @@ Added a Bootstrap NavBar that we can change if we want. Just wanted some okay lo
       </div>
     </nav>
 
-    <router-view></router-view>
+    <main>
+      <router-view></router-view>
+    </main>
   </div>
 </template>
 
+<script>
+export default {
+  name: 'App',
+};
+</script>
 
 <style scoped>
 @import 'https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/darkly/bootstrap.min.css';
 
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%; 
+  padding: 20px;
+  background-color: var(--mountainShadow);
+}
 
 .navbar-brand {
   font-weight: bold;
   font-size: 1.8rem;
-  color: var(--freshVeg)
+  color: var(--freshVeg);
 }
 
 .navbar-nav .nav-link {
-  font-size: 1.1rem;
-  margin-right: 15px;
+  color: var(--glacierWater);
 }
 
-.nav-link.active {
-  text-decoration: underline;
-}
-
-@media (max-width: 992px) {
-  .navbar-nav {
-    text-align: center;
-  }
+.navbar-nav .nav-link.active {
+  font-weight: bold;
+  color: var(--freshVeg);
 }
 </style>

@@ -9,6 +9,9 @@
       <button @click="toggleDeleteForm" class="action-btn">
         {{ showDeleteForm ? '➖' : '🗑️ Delete Items' }}
       </button>
+      <button @click="toggleUploadForm" class="action-btn">
+        {{ showUploadForm ? '➖' : '📷 Upload Image' }}
+      </button>
     </div>
 
     <div v-if="showAddForm" class="popup-overlay" @click="toggleAddForm">
@@ -19,7 +22,13 @@
 
     <div v-if="showDeleteForm" class="popup-overlay" @click="toggleDeleteForm">
       <div class="popup-content" @click.stop>
-        <DeleteItem :items="groceries" @delete-items="removeItemsFromList" />
+        <DeleteItem :items="groceries" @delete-items="deleteItems" @close="toggleDeleteForm" />
+      </div>
+    </div>
+
+    <div v-if="showUploadForm" class="popup-overlay" @click="toggleUploadForm">
+      <div class="popup-content" @click.stop>
+        <UploadImage @close="toggleUploadForm" />
       </div>
     </div>
   </main>
@@ -30,10 +39,12 @@ import { ref, onMounted } from 'vue';
 import AddItem from '../components/AddItem.vue';
 import ItemList from '../components/ItemList.vue';
 import DeleteItem from '@/components/DeleteItem.vue';
+import UploadImage from '../components/UploadImage.vue';
 
 const groceries = ref([]);
 const showAddForm = ref(false);
 const showDeleteForm = ref(false);
+const showUploadForm = ref(false);
 
 
 // Fetch groceries from the API
@@ -105,6 +116,11 @@ const toggleDeleteForm = () => {
   showDeleteForm.value = !showDeleteForm.value;
 };
 
+// Toggle Upload Form
+const toggleUploadForm = () => {
+  showUploadForm.value = !showUploadForm.value;
+};
+
 // Fetch groceries from API to get the latest data
 onMounted(async () => {  
   await fetchGroceries();
@@ -119,7 +135,12 @@ main {
   gap: 20px;
 }
 
-.toggle-btn {
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
   background-color: #4caf50;
   color: white;
   border: none;
@@ -144,11 +165,11 @@ main {
 
 /* Popup content styling */
 .popup-content {
-  background-color: white;
+  background-color: var(--lighterMountainShadow);
   padding: 30px;
   border-radius: 10px;
-  width: 300px;
-  max-width: 90%;
+  width: 400px;
+  max-width: 95%;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
 }
 </style>

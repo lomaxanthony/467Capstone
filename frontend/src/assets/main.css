@@ -27,11 +27,11 @@ Took some inspiration from CS290 to make a bit of a color variable scheme that w
 
     --darkerMountainShadow: #1c1d1f;
   
-    /* --flagstickOrange: #f9bf2d;
+    --lighterMountainShadow: #4a4f56;
   
     --cloudyTransparent: #dee3e78f; 
 
-    
+    /*
 
     --flagRed: #D9304F;
 
@@ -39,14 +39,8 @@ Took some inspiration from CS290 to make a bit of a color variable scheme that w
 }
 
 /*  ----- Viewport ----- elements inherited by all remaining elements ----- */
-body {       /* Can alternatively define in html {} or :root {} */
-    background-color:var(--mountainShadow);  
-    background-size: cover;
-    background-attachment: fixed;
-    background-position: top left;
-    background-repeat: no-repeat;
-    color: var(--mountainShadow);
-    font-family: 'Open Sans', sans-serif;
+/* General styles */
+body {
     font-size: 1.2em;
     line-height: 1.2; 
     margin: auto;
@@ -55,8 +49,7 @@ body {       /* Can alternatively define in html {} or :root {} */
     padding: 3%;
 }
 
-
-/*  ----- Page layout blocks -----  */
+/* Page layout blocks */
 header {
     background-color: var(--mountainShadow);
     margin-top: 10px;
@@ -64,17 +57,20 @@ header {
     padding: 30px;
     border: 10px;
 }
-header img{
+
+header img {
     height: 80px;
     width: 80px;
 }
+
 main {
   background-color: var(--mountainShadow);
-  padding: 4%;
-  border: 60px;
+  padding: 2%; /* Reduced padding */
+  border: none; /* Removed border */
 }
+
 section {
     background-color: var(--cloudy);
-    margin: 2%;
-    padding: 4%;
+    margin: 1%; /* Reduced margin */
+    padding: 2%; /* Reduced padding */
 }

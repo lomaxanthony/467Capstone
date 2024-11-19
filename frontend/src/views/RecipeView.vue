@@ -16,7 +16,12 @@
 export default {
     name: 'RecipeView',
     data() {
-        
+        return {
+            user: {
+                name: 'Tony'
+            },
+            recipes: []
+        };
     },
     created() {
         this.fetchRecipes();
