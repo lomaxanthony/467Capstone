@@ -18,6 +18,8 @@
 import { ref, onMounted } from 'vue';
 import Profile from '../components/Profile.vue';
 
+const API_BASE_URL = 'http://127.0.0.1:5000/api';
+
 const user = ref(null);
 const loggedIn = ref(false);
 const username = ref('');
@@ -25,7 +27,7 @@ const password = ref('');
 
 const checkLogin = async () => {
   try {
-    const response = await fetch('/api/check_login', {
+    const response = await fetch(`${API_BASE_URL}/check_login`, {
       method: 'GET',
       credentials: 'include' // Include cookies in the request
     });
@@ -41,12 +43,12 @@ const checkLogin = async () => {
 
 const login = async () => {
   try {
-    const response = await fetch('/api/login', {
+    const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ username: username.value, password: password.value }),
+      body: JSON.stringify({ user_name: username.value, password: password.value }),
       credentials: 'include' // Include cookies in the request
     });
     if (!response.ok) {
@@ -55,6 +57,7 @@ const login = async () => {
     const data = await response.json();
     user.value = data.user;
     loggedIn.value = true;
+    localStorage.setItem('jwt_token', data.token); // Store the token in localStorage
   } catch (error) {
     console.error('Error logging in:', error);
   }

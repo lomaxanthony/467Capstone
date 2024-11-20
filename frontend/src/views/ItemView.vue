@@ -1,6 +1,6 @@
 <template>
   <main>
-    <ItemList :items="groceries" /> 
+    <ItemList :items="groceries" :token="token" /> 
     
     <div class="button-group">
       <button @click="toggleAddForm" class="action-btn">
@@ -46,16 +46,25 @@ const showAddForm = ref(false);
 const showDeleteForm = ref(false);
 const showUploadForm = ref(false);
 
+const API_BASE_URL = 'http://127.0.0.1:5000/api';
 
 // Fetch groceries from the API
 const fetchGroceries = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/groceries');
+    const response = await fetch(`${API_BASE_URL}/groceries`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token.value}` // Include the Authorization header
+      },
+      credentials: 'include' // Include cookies in the request
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     const data = await response.json();
-    console.log('API Response:', data); 
-    groceries.value = Array.isArray(data) ? data : []; 
+    groceries.value = data;
   } catch (error) {
-    console.error('Failed to fetch groceries:', error);
+    console.error('Error fetching groceries:', error);
   }
 };
 
@@ -122,7 +131,9 @@ const toggleUploadForm = () => {
 };
 
 // Fetch groceries from API to get the latest data
-onMounted(async () => {  
+onMounted(async () => { 
+  // Retrieve the token from localStorage
+  token.value = localStorage.getItem('jwt_token') || ''; 
   await fetchGroceries();
 });
 </script>

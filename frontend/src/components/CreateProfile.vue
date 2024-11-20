@@ -24,7 +24,7 @@
         </div>
         <div class="form-group">
           <label for="profile_pic_url">Profile Picture URL</label>
-          <input v-model="profile_pic_url" type="text" id="profile_pic_url" required />
+          <input v-model="profile_pic_url" type="text" id="profile_pic_url" />
         </div>
         <div class="form-group">
           <label for="phone_number">Phone Number</label>
@@ -49,6 +49,8 @@
   
   <script setup>
   import { ref } from 'vue';
+
+  const API_BASE_URL = 'http://127.0.0.1:5000/api';
   
   const username = ref('');
   const email = ref('');
@@ -63,7 +65,7 @@
   
   const submitForm = async () => {
     try {
-      const response = await fetch('/api/create_user', {
+      const response = await fetch(`${API_BASE_URL}/user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

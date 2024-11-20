@@ -1,3 +1,7 @@
+# I (with a lot of help from Github Copilit) did a lot of adjusting to the backend file so that I could get adding a new user, 
+# having the user login, and then adding a new grocery item to the database.
+
+
 from flask import Flask, jsonify, request, send_from_directory, redirect, url_for, render_template, session, flash
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
@@ -6,16 +10,69 @@ from mysql.connector import Error
 import os
 import sys
 from db_config import get_db_connection
+from dotenv import load_dotenv
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from datetime import timedelta
+import secrets
+
+load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 bcrypt = Bcrypt(app)
 
-CORS(app)    #Allow frontend to communicate with the backend
+###### TRYING A NEW APPROACH TO THE COOKIE MADNESS ######
+# Set a secure secret key for sessions
+app.secret_key = os.getenv('SECRET_KEY')
+
+# Configure JWT
+app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
+jwt = JWTManager(app)
+
+# Configure CORS with support for credentials
+CORS(app, supports_credentials=True, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:5173"],  # Your Vue.js development server
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "supports_credentials": True
+    }
+})
+
+
+
+
+# Set the secret key for proper session management, otherwise you get a 500 when logging in
+# This is a temporary secret key, will need to change this to a more secure key
+# app.secret_key = os.getenv('SECRET_KEY')
+# app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY')
+# app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
+# app.config['JWT_COOKIE_SECURE'] = True  # Ensures cookies are only sent over HTTPS
+# app.config['JWT_COOKIE_SAMESITE'] = 'None'  # Controls cross-site behavior; try 'Lax' or 'Strict'
+
+
+# jwt = JWTManager(app)
+
+# Configure CORS (Cross-Origin Resource Sharing) to allow credentials
+# This will allow the frontend to send cookies and credentials to the backend
+# Grabbinn the frontend URL from the .env file
+
+# CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": os.getenv('FRONTEND_URL')}})
+
+# app.config.update(
+#     SESSION_COOKIE_SECURE=True,
+#     SESSION_COOKIE_HTTPONLY=True,
+#     SESSION_COOKIE_SAMESITE='None',  # 'None' to allow cross-site cookies
+#     SESSION_COOKIE_NAME='pantry_session',
+#     PERMANENT_SESSION_LIFETIME=timedelta(days=7)
+# )
+
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
 
-# Demo Groceries to test functionalit
+# Demo Groceries to test functionality
 groceries = [
     {"id": 1, "name": "Milk", "quantity": 1},
     {"id": 1, "name": "Eggs", "quantity": 12}
@@ -110,6 +167,7 @@ def login():
         content = request.get_json()
         
         if not content_is_valid(content, ['user_name', 'password']):
+            print("Invalid content:", content)
             return jsonify(CONTENT_NOT_VALID), 400
             
         conn = get_db_connection()
@@ -129,16 +187,19 @@ def login():
         conn.close()
         
         if bcrypt.check_password_hash(hashed_password, content['password']):
-            session["username"] = user[0]['username']
-            return jsonify({'Message': 'Login successful'})
+            access_token = create_access_token(identity=user[0]['username'])
+            return jsonify(access_token=access_token), 200
         else:
             return jsonify({'Message': 'Invalid password'}), 401
     except mysql.connector.Error as err:
         # Database error
+        print(f"Database error: {err}")
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         # General error
+        print(f"An error occurred: {e}")
         return jsonify({"Error": f"An error occurred: {e}"}), 500
+
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
@@ -395,54 +456,50 @@ def delete_user(username):
 ################################################################
 # GET, POST, PUT, DELETE User's Groceries (in GroceryApp.Inventory) #
 ################################################################
-@app.route('/api/groceries/<username>', methods=['GET'])
-def get_groceries(username):
+@app.route('/api/groceries', methods=['GET'])
+@jwt_required()
+def get_groceries():
     """
-    Returns grocery items for the specified user.
-   
-    username is passed in URL
+    Returns grocery items for the logged-in user.
    
     Returns:
         200 if groceries successfully returned
+        401 if user not logged in
         404 if user not found or user has no groceries
         500 Internal Server Error: Database error.
     """   
     try:
+        current_user = get_jwt_identity()
+        
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (username,))
+        cursor.execute(user_query, (current_user,))
         user = cursor.fetchone()
+        
         if not user:
             conn.close()
             return jsonify({"Error": "User not found"}), 404
 
-        query = """
-            SELECT i.inventory_id AS id, f.food_name AS name, i.quantity
-            FROM GroceryApp.Inventory i
-            JOIN GroceryApp.Users u ON i.user_id = u.user_id
-            JOIN GroceryApp.AllFoods f ON i.food_id = f.food_id
-            WHERE u.user_name = %s
-        """
-        cursor.execute(query, (username,))  # Comma after username makes it a tuple
-
-        # Check if user exists
-        results = cursor.fetchall()
-        if not results:
-            conn.close()
-            return jsonify({"Error": "No groceries"}), 404
-
+        groceries_query = "SELECT * FROM GroceryApp.Inventory WHERE user_id = %s"
+        cursor.execute(groceries_query, (user['user_id'],))
+        groceries = cursor.fetchall()
+        
         conn.close()
-        return jsonify(results), 200
-
+        
+        if not groceries:
+            return jsonify({"Error": "No groceries found"}), 404
+        
+        return jsonify(groceries), 200
     except mysql.connector.Error as err:
         # Database error
+        print(f"Database error: {err}")
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         # General error
+        print(f"An error occurred: {e}")
         return jsonify({"Error": f"An error occurred: {e}"}), 500
-
 
 @app.route('/api/groceries', methods=['POST'])
 def add_grocery():
