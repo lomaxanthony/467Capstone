@@ -37,6 +37,9 @@ Added a Bootstrap NavBar that we can change if we want. Just wanted some okay lo
             <li class="nav-item">
               <router-link to="/profile" class="nav-link" active-class="active">User Profile</router-link>
             </li>
+            <li class="nav-item">
+              <router-link to="/login" class="nav-link" active-class="active">Log In</router-link>
+            </li>
           </ul>
         </div>
       </div>
