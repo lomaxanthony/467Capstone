@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`AllFoods` (
   CONSTRAINT `fk_allfoods_recipe_id`
     FOREIGN KEY (`recipe_id`)
     REFERENCES `GroceryApp`.`Recipes` (`recipe_id`)
-    ON DELETE CASCADE,
+    ON DELETE CASCADE
   
 );
 
@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Recipes` (
   `recipe_id` INT NOT NULL AUTO_INCREMENT,
   `recipe_name` VARCHAR(50) NOT NULL,
   `recipe_url` VARCHAR(255) NOT NULL,
+  `user_id` INT NOT NULL,
   PRIMARY KEY (`recipe_id`),
   UNIQUE (`recipe_name`, `user_id`),
   CONSTRAINT `fk_recipes_user_id`
@@ -139,9 +140,9 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Ingredients` (
 
 CREATE INDEX `idx_ingredients_food_id` ON `GroceryApp`.`Ingredients` (`food_id` ASC) VISIBLE;
 
----------------------------------------------------------
+-- -------------------------------------------------------
 -- Table `GroceryApp`.`UserUsage`
----------------------------------------------------------
+-- -------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `GroceryApp`.`UserUsage` (
   `usage_id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT NOT NULL,
