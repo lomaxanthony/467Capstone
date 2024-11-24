@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory #, redirect, url_for, render_template, session, flash
+from flask import Flask, jsonify, request, session, send_from_directory #, redirect, url_for, render_template, session, flash
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 import mysql.connector

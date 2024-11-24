@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Users` (
   `user_name` VARCHAR(50) NOT NULL,
   `first_name` VARCHAR(50) NOT NULL,
   `last_name` VARCHAR(50) NOT NULL,
-  `profile_pic_url` VARCHAR(50),
+  `profile_pic_url` VARCHAR(2083),
   `email` VARCHAR(50) NOT NULL,
   `phone_number` VARCHAR(15) NULL DEFAULT NULL,
   `password` CHAR(60) NOT NULL,

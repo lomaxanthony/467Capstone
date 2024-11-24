@@ -3,7 +3,7 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import ProfileView from '../views/ProfileView.vue'
+import ProfileView from '../views/UserProfileView.vue'
 import ItemView from '../views/ItemView.vue'
 import RecipeView from '@/views/RecipeView.vue'
 
