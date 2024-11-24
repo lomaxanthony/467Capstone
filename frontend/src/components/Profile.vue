@@ -1,44 +1,74 @@
 <template>
-    <div class="main">
-        <img 
-            src="https://media.istockphoto.com/id/1495088043/vector/user-profile-icon-avatar-or-person-icon-profile-picture-portrait-symbol-default-portrait.jpg?s=170667a&w=0&k=20&c=LPUo_WZjbXXNnF6ok4uQr8I_Zj6WUVnH_FpREg21qaY="
-            width="200"
-        >
-        <div>Username: {{ user.user_name }}</div>
-        <div>Email: {{ user.email }}</div>
-        <div>Phone Number: {{ user.phone_number }}</div>
+    <div class="profile-container" v-if="state.user">
+      <h2>Profile</h2>
+      <div class="profile-picture">
+        <img :src="state.user.profile_pic_url" alt="Profile Picture" />
+      </div>
+      <div class="profile-info">
+        <div class="info-item">
+          <strong>Username:</strong> {{ state.user.username }}
+        </div>
+        <div class="info-item">
+          <strong>Email:</strong> {{ state.user.email }}
+        </div>
+        <div class="info-item">
+          <strong>Phone Number:</strong> {{ state.user.phone_number }}
+        </div>
+      </div>
+    </div>
+    <div v-else>
+      Loading user data...
     </div>
   </template>
 
 <script>
-    import { reactive } from 'vue'
+    import { inject } from "vue";
 
     export default {
+        name: "Login",
         setup() {
-            // using dummy data to test out app
+            const state = inject("state");
+            return { state }
+        },
 
-            const user = reactive({
-                user_name: 'user123',
-                email: 'user@gmail.com',
-                phone_number: '123456789',
-                receive_sms_notifications: true
-            });
-
-            return { user };
-        }
     }
 </script>
 
-<style>
-    .main {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background-color: var(--darkerMountainShadow);
-        color: #ffffff;
-        text-align: center;
-        padding: 5%;
-        margin-top: 8%;
-    }
+<style scoped>
+
+.profile-container {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 1em;
+  color: #ffffff;
+  border-radius: 8px;
+  text-align: center;
+}
+
+h2 {
+  margin-bottom: 1em;
+}
+
+.profile-picture img {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 1em;
+  border: 2px solid #ccc;
+}
+
+.profile-info {
+  margin-top: 1em;
+}
+
+.info-item {
+  margin-bottom: 0.5em;
+  font-size: 1rem;
+  color: #ffffff;
+}
+
+.info-item strong {
+  color: #4caf50;
+}
 </style>
