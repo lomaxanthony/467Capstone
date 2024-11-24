@@ -27,44 +27,40 @@ const password = ref('');
 
 const checkLogin = async () => {
   try {
+    console.log('Checking login status...');
+    const token = localStorage.getItem('access_token');
+    console.log('Token:', token);
+    if (!token) {
+      loggedIn.value = false;
+      console.log('No token found, setting loggedIn to false');
+      return;
+    }
     const response = await fetch(`${API_BASE_URL}/check_login`, {
       method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       credentials: 'include' // Include cookies in the request
     });
     const data = await response.json();
+    console.log('Response data:', data);
     loggedIn.value = data.logged_in;
     if (data.logged_in) {
       user.value = data.user;
+      console.log('User data:', user.value);
+    } else {
+      console.log('User is not logged in');
     }
   } catch (error) {
     console.error('Error checking login status:', error);
   }
 };
 
-const login = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ user_name: username.value, password: password.value }),
-      credentials: 'include' // Include cookies in the request
-    });
-    if (!response.ok) {
-      throw new Error('Login failed');
-    }
-    const data = await response.json();
-    user.value = data.user;
-    loggedIn.value = true;
-    localStorage.setItem('jwt_token', data.token); // Store the token in localStorage
-  } catch (error) {
-    console.error('Error logging in:', error);
-  }
-};
-
 // Check login status on mount
-onMounted(checkLogin);
+onMounted(() => {
+  console.log('Component mounted, calling checkLogin');
+  checkLogin();
+});
 </script>
 
 <style scoped>

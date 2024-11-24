@@ -3,7 +3,8 @@
 
 
 from flask import Flask, jsonify, request, send_from_directory, redirect, url_for, render_template, session, flash
-from flask_cors import CORS
+from flask_session import Session
+from flask_cors import CORS, cross_origin
 from flask_bcrypt import Bcrypt
 import mysql.connector
 from mysql.connector import Error
@@ -14,32 +15,63 @@ from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
 import secrets
+import logging
+
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='')
+
+SECRET_KEY = 'G0kulTh3GO@T'
+app.secret_key = os.getenv('SECRET_KEY')
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True,
+    SESSION_TYPE='filesystem'
+)
+app.config.from_object(__name__)
 bcrypt = Bcrypt(app)
+Session(app)
 
 ###### TRYING A NEW APPROACH TO THE COOKIE MADNESS ######
 # Set a secure secret key for sessions
-app.secret_key = os.getenv('SECRET_KEY')
+  
 
 # Configure JWT
-app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
-jwt = JWTManager(app)
+# app.config['JWT_SECRET_KEY'] = 'G0kulTh3GO@T'
+# app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
+# jwt = JWTManager(app)
 
+# Configure CORS with support for credentials
 # Configure CORS with support for credentials
 CORS(app, supports_credentials=True, resources={
     r"/api/*": {
-        "origins": ["http://localhost:5173"],  # Your Vue.js development server
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "origins": ["http://localhost:5173"],  
+        # "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        # "allow_headers": ["Content-Type", "Authorization"],
+        # "expose_headers": ["Content-Range", "X-Content-Range"],
         "supports_credentials": True
     }
 })
 
+
+
+# Enable logging for CORS
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('flask_cors')
+logger.setLevel(logging.DEBUG)
+
+# Debug: Print environment variables
+logging.debug(f"DB_USER: {os.getenv('DB_USER')}")
+logging.debug(f"DB_PASSWORD: {os.getenv('DB_PASSWORD')}")
+logging.debug(f"DB_HOST: {os.getenv('DB_HOST')}")
+logging.debug(f"DB_NAME: {os.getenv('DB_NAME')}")
+logging.debug(f"SECRET_KEY: {os.getenv('SECRET_KEY')}")
+
+# # Enable logging for CORS
+# logging.basicConfig(level=logging.DEBUG)
+# logger = logging.getLogger('flask_cors')
+# logger.setLevel(logging.DEBUG)
 
 
 
@@ -146,10 +178,13 @@ def execute_sql_file(connection, sql_file_path):
 #     session['username'] = username
 #     return jsonify({"message": f"Session set for user {username}"})
 
+
+
 #########################################
 # Login and Logout functions, both POST #
 #########################################
 @app.route('/api/login', methods=['POST'])
+@cross_origin(supports_credentials=True)
 def login():
     """
     "Login" depending on return status
@@ -165,12 +200,16 @@ def login():
     """
     try:
         content = request.get_json()
+        logging.debug(f"Received login request with content: {content}")
         
         if not content_is_valid(content, ['user_name', 'password']):
-            print("Invalid content:", content)
-            return jsonify(CONTENT_NOT_VALID), 400
+            logging.debug("Content is not valid")
+            return jsonify({"message": "Content not valid"}), 400
             
         conn = get_db_connection()
+        if conn is None:
+            return jsonify({"Error": "Failed to connect to the database"}), 500
+
         cursor = conn.cursor(dictionary=True)
        
         user_query = """SELECT user_id AS id, user_name AS username, password as hashed_password
@@ -181,55 +220,44 @@ def login():
      
         user = cursor.fetchall()
         if not user:
+            logging.debug("User not found")
             conn.close()
-            return jsonify(USER_NOT_FOUND), 404
+            return jsonify({"message": "User not found"}), 404
         hashed_password = user[0]['hashed_password']
-        conn.close()
         
         if bcrypt.check_password_hash(hashed_password, content['password']):
-            access_token = create_access_token(identity=user[0]['username'])
-            return jsonify(access_token=access_token), 200
+            session["username"] = user[0]['username']
+            session["user_id"] = user[0]['id']
+            logging.debug("Login successful")
+            conn.close()
+            return jsonify({'Message': 'Login successful'}), 200
         else:
+            logging.debug("Invalid password")
+            conn.close()
             return jsonify({'Message': 'Invalid password'}), 401
     except mysql.connector.Error as err:
-        # Database error
-        print(f"Database error: {err}")
+        logging.error(f"Database error: {err}")
+        if conn and conn.is_connected():
+            conn.close()
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
-        # General error
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
+        if conn and conn.is_connected():
+            conn.close()
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-
-@app.route('/api/logout', methods=['POST'])
-def logout():
-    """
-    Logout by removing username from session
-    
-    Returns:
-        200 if successful
-        401 user not logged in
-        500 server error
-    """
-    try:
-        if 'username' not in session:
-            return jsonify({'Message': 'You are not logged in'}), 401
-        
-        session.pop('username', None)
-        return jsonify({'Message': 'Logged out successfully'}), 200
-    except Exception as e:
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
     
 ####################################################################################
 # Check if user is logged in for session management                                #
 ####################################################################################
 
 @app.route('/api/check_login', methods=['GET'])
+@cross_origin(supports_credentials=True)
 def check_login():
-    if 'user' in session:
-        return jsonify({"logged_in": True, "user": session['user']}), 200
+    if 'username' in session:
+        return jsonify(logged_in=True, user=session['username']), 200
     else:
-        return jsonify({"logged_in": False}), 200
+        return jsonify(logged_in=False), 200
 
 
 ####################################################################################

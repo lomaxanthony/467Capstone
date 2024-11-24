@@ -44,11 +44,18 @@
         </div>
         <button type="submit">Create Profile</button>
       </form>
+
+      // Display a success message if the profile was created successfully
+      <div v-if="successMessage" class="success-message">
+      {{ successMessage }}
+    </div>
+
     </div>
   </template>
   
   <script setup>
   import { ref } from 'vue';
+  import { useRouter } from 'vue-router';
 
   const API_BASE_URL = 'http://127.0.0.1:5000/api';
   
@@ -62,6 +69,9 @@
   const receive_sms_notifications = ref(false);
   const receive_email_notifications = ref(false);
   const preferred_notification_time = ref('');
+  const successMessage = ref('');
+
+  const router = useRouter();
   
   const submitForm = async () => {
     try {
@@ -86,8 +96,12 @@
       if (!response.ok) {
         throw new Error('Failed to create profile');
       }
+
+      // check for successful loging, then redirect to pantry page
       const data = await response.json();
       console.log('Profile created:', data);
+      successMessage.value = 'Profile created successfully';
+      router.push('/login');
     } catch (error) {
       console.error('Error creating profile:', error);
     }
