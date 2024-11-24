@@ -6,6 +6,9 @@ import HomeView from '../views/HomeView.vue'
 import UserProfileView from '../views/UserProfileView.vue'
 import AddItemView from '../views/ItemView.vue'
 import LoginView from '@/views/LoginView.vue'
+import ProfileView from '../views/ProfileView.vue'
+import ItemView from '../views/ItemView.vue'
+import RecipeView from '@/views/RecipeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,7 +21,12 @@ const router = createRouter({
     {
       path: '/add',
       name: 'addItems',
-      component: AddItemView
+      component: ItemView
+    },
+    {
+      path: '/recipes',
+      name: 'recipes',
+      component: RecipeView
     },
     {
       path: '/profile',
@@ -32,6 +40,7 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView
+      component: ProfileView
     }
   ]
 })
