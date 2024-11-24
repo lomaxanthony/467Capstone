@@ -34,10 +34,13 @@ Added a Bootstrap NavBar that we can change if we want. Just wanted some okay lo
             <li class="nav-item">
               <router-link to="/recipes" class="nav-link" active-class="active">Recipes</router-link>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" v-if="state.isLoggedIn">
               <router-link to="/profile" class="nav-link" active-class="active">User Profile</router-link>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" v-if="state.isLoggedIn">
+              <a href="#" class="nav-link" @click.prevent="handleLogout">Log Out</a>
+            </li>
+            <li class="nav-item" v-else>
               <router-link to="/login" class="nav-link" active-class="active">Log In</router-link>
             </li>
           </ul>
@@ -48,6 +51,110 @@ Added a Bootstrap NavBar that we can change if we want. Just wanted some okay lo
     <router-view></router-view>
   </div>
 </template>
+
+
+<script>
+import { reactive, provide, onMounted } from "vue";
+import { useRouter } from "vue-router";
+
+export default {
+  name: "App",
+  setup() {
+    const state = reactive({
+      user: null,
+      isLoggedIn: false,
+    });
+
+    // provide state object to child components
+    provide("state", state)
+
+    const router = useRouter();
+
+    // we want to check first if there is a current session logged in
+    const fetchSessionData = async () => {
+      try {
+        // fetch the session status from the /api/session endpoint
+        const sessionResponse = await fetch("http://127.0.0.1:5000/api/session", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          if (sessionData.username) {
+            // if the session contains a username, the user is logged in
+            state.isLoggedIn = true;
+            state.user = { user_name: sessionData.username };
+            
+            // fetch user data
+            await fetchUserData(sessionData.username);
+          } else {
+            state.isLoggedIn = false;
+            state.user = null;
+          }
+        } else {
+          state.isLoggedIn = false;
+          state.user = null;
+        }
+      } catch (error) {
+        console.error("Error checking session data:", error);
+        state.isLoggedIn = false;
+        state.user = null;
+      }
+    };
+
+    // fetch the user data based on the username
+    const fetchUserData = async () => {
+      try {
+        const userResponse = await fetch("http://127.0.0.1:5000/api/user", {
+          method: "GET",
+          credentials: "include", 
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          state.user = userData;
+        } else {
+          console.error("Error fetching user data:", await userResponse.text());
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    // handle user log out
+    const handleLogout = async () => {
+      try {
+        const logoutResponse = await fetch("http://127.0.0.1:5000/api/logout", {
+          method: "POST", // 
+          credentials: "include",
+        });
+
+        if (logoutResponse.ok) {
+          state.isLoggedIn = false;
+          state.user = null;
+          router.push("/");
+        } else {
+          console.error("Error logging out:", await logoutResponse.text());
+        }
+      } catch (error) {
+        console.error("Error logging out:", error);
+      }
+    };
+
+    // on component mount, check session and fetch user data if logged in
+    onMounted(() => {
+      fetchSessionData();
+    });
+
+    return {
+      state,
+      router,
+      handleLogout
+    };
+  },
+};
+</script>
 
 
 <style scoped>

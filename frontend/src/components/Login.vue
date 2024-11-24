@@ -47,10 +47,10 @@
     methods: {
       async handleLogin() {
         try {
-          // Reset message and error state
           this.message = "";
           this.isError = false;
   
+          // send request to login route with user + pass
           const response = await fetch("http://127.0.0.1:5000/api/login", {
             method: "POST",
             headers: {
@@ -60,6 +60,7 @@
               user_name: this.user_name,
               password: this.password,
             }),
+            credentials: "include",
           });
   
           const result = await response.json();
@@ -67,6 +68,10 @@
           if (response.ok) {
             this.message = "Login successful!";
             this.isError = false;
+
+            // redirect user back to welcome page on success, update message
+            this.$router.push("/");
+
           } else {
             this.message = result.Message || "An error occurred.";
             this.isError = true;

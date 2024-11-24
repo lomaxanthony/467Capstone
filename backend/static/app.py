@@ -1,5 +1,6 @@
-from flask import Flask, jsonify, request, send_from_directory #, redirect, url_for, render_template, session, flash
-from flask_cors import CORS
+from flask import Flask, jsonify, request, send_from_directory, redirect, url_for, render_template, session, flash
+from flask_cors import CORS, cross_origin
+from flask_session import Session
 from flask_bcrypt import Bcrypt
 import mysql.connector
 from mysql.connector import Error
@@ -13,9 +14,27 @@ from google.cloud import vision
 app = Flask(__name__, static_folder='static', static_url_path='')
 app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
 
-CORS(app)    #Allow frontend to communicate with the backend
+CORS(app, supports_credentials=True, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:5173"],  # Your Vue.js development server
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "supports_credentials": True
+    }
+})    #Allow frontend to communicate with the backend
 bcrypt = Bcrypt(app) # For hashing password
 vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
+
+# Ensure session cookies are correctly set
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_PERMANENT'] = True
+app.permanent_session_lifetime = timedelta(days=7)  
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
+
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
@@ -143,6 +162,7 @@ def recognize_image():
 # Login and Logout functions, both POST #
 #########################################
 @app.route('/api/login', methods=['POST'])
+@cross_origin(supports_credentials=True)
 def login():
     """
     "Login" depending on return status
@@ -171,15 +191,15 @@ def login():
             """
         cursor.execute(user_query, (content['user_name'],))
      
-        user = cursor.fetchall()
+        user = cursor.fetchone()
         if not user:
             conn.close()
             return jsonify(USER_NOT_FOUND), 404
-        hashed_password = user[0]['hashed_password']
+        hashed_password = user['hashed_password']
         conn.close()
         
         if bcrypt.check_password_hash(hashed_password, content['password']):
-            session["username"] = username
+            session["username"] = content['user_name']
             return jsonify({'Message': 'Login successful'})
         else:
             return jsonify({'Message': 'Invalid password'}), 401
@@ -212,7 +232,15 @@ def logout():
 ###################################
 # GET, POST, PUT, and DELETE User #
 ###################################
+@app.route('/api/session', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def check_session():
+    print("Session Data:", session.get("username"))
+    return jsonify({"username": session.get("username")})
+
+
 @app.route('/api/user', methods=['GET'])
+@cross_origin(supports_credentials=True)
 def get_user_info():
     """
     Returns user_id, user_name, first_name, last_name, profile_pic_url, email, phone number, SMS notifications preference, email notifications preference, and preferred notification time
@@ -225,6 +253,10 @@ def get_user_info():
     500 internal server error
     """
     try:
+        username = session.get("username")
+        if not username:
+            return jsonify({"Error": "No active session"}), 401
+
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
        
