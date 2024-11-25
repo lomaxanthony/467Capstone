@@ -1,110 +1,45 @@
-# I (with a lot of help from Github Copilit) did a lot of adjusting to the backend file so that I could get adding a new user, 
-# having the user login, and then adding a new grocery item to the database.
-
-
 from flask import Flask, jsonify, request, send_from_directory, redirect, url_for, render_template, session, flash
-from flask_session import Session
 from flask_cors import CORS, cross_origin
+from flask_session import Session
 from flask_bcrypt import Bcrypt
 import mysql.connector
 from mysql.connector import Error
 import os
 import sys
+import json
 from db_config import get_db_connection
-from dotenv import load_dotenv
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
-import secrets
-import logging
-
-
-load_dotenv()
+from google.cloud import vision
 
 app = Flask(__name__, static_folder='static', static_url_path='')
+app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
 
-SECRET_KEY = 'G0kulTh3GO@T'
-app.secret_key = os.getenv('SECRET_KEY')
-app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=True,
-    SESSION_TYPE='filesystem'
-)
-app.config.from_object(__name__)
-bcrypt = Bcrypt(app)
-Session(app)
-
-###### TRYING A NEW APPROACH TO THE COOKIE MADNESS ######
-# Set a secure secret key for sessions
-  
-
-# Configure JWT
-# app.config['JWT_SECRET_KEY'] = 'G0kulTh3GO@T'
-# app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
-# jwt = JWTManager(app)
-
-# Configure CORS with support for credentials
-# Configure CORS with support for credentials
 CORS(app, supports_credentials=True, resources={
     r"/api/*": {
-        "origins": ["http://localhost:5173"],  
-        # "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        # "allow_headers": ["Content-Type", "Authorization"],
-        # "expose_headers": ["Content-Range", "X-Content-Range"],
+        "origins": ["http://localhost:5173"],  # Your Vue.js development server
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
         "supports_credentials": True
     }
-})
+})    #Allow frontend to communicate with the backend
+bcrypt = Bcrypt(app) # For hashing password
+vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
-
-
-# Enable logging for CORS
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('flask_cors')
-logger.setLevel(logging.DEBUG)
-
-# Debug: Print environment variables
-logging.debug(f"DB_USER: {os.getenv('DB_USER')}")
-logging.debug(f"DB_PASSWORD: {os.getenv('DB_PASSWORD')}")
-logging.debug(f"DB_HOST: {os.getenv('DB_HOST')}")
-logging.debug(f"DB_NAME: {os.getenv('DB_NAME')}")
-logging.debug(f"SECRET_KEY: {os.getenv('SECRET_KEY')}")
-
-# # Enable logging for CORS
-# logging.basicConfig(level=logging.DEBUG)
-# logger = logging.getLogger('flask_cors')
-# logger.setLevel(logging.DEBUG)
-
-
-
-# Set the secret key for proper session management, otherwise you get a 500 when logging in
-# This is a temporary secret key, will need to change this to a more secure key
-# app.secret_key = os.getenv('SECRET_KEY')
-# app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY')
-# app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
-# app.config['JWT_COOKIE_SECURE'] = True  # Ensures cookies are only sent over HTTPS
-# app.config['JWT_COOKIE_SAMESITE'] = 'None'  # Controls cross-site behavior; try 'Lax' or 'Strict'
-
-
-# jwt = JWTManager(app)
-
-# Configure CORS (Cross-Origin Resource Sharing) to allow credentials
-# This will allow the frontend to send cookies and credentials to the backend
-# Grabbinn the frontend URL from the .env file
-
-# CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": os.getenv('FRONTEND_URL')}})
-
-# app.config.update(
-#     SESSION_COOKIE_SECURE=True,
-#     SESSION_COOKIE_HTTPONLY=True,
-#     SESSION_COOKIE_SAMESITE='None',  # 'None' to allow cross-site cookies
-#     SESSION_COOKIE_NAME='pantry_session',
-#     PERMANENT_SESSION_LIFETIME=timedelta(days=7)
-# )
+# Ensure session cookies are correctly set
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_PERMANENT'] = True
+app.permanent_session_lifetime = timedelta(days=7)  
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
 
-# Demo Groceries to test functionality
+# Demo Groceries to test functionalit
 groceries = [
     {"id": 1, "name": "Milk", "quantity": 1},
     {"id": 1, "name": "Eggs", "quantity": 12}
@@ -120,14 +55,26 @@ CONTENT_NOT_VALID = {"Error": "Invalid request body"}
 #    'password': 'password',
 #    'host': 'localhost',
 #    'database': 'GroceryApp'
-#}
 
 
 # Returns True if content is valid False otherwise
-def content_is_valid(content, list_to_be_valid):
-    for item in list_to_be_valid:
-        if item not in content:
+def content_is_valid(content, list_to_be_valid, optional_fields=None):
+    if list_to_be_valid is None:
+        list_to_be_valid = []
+    if optional_fields is None:
+        optional_fields = []
+
+    # Ensure all required fields are present
+    for field in list_to_be_valid:
+        if field not in content:
             return False
+
+    # Ensure no unexpected fields are present
+    allowed_fields = set(list_to_be_valid + optional_fields)
+    for key in content.keys():
+        if key not in allowed_fields:
+            return False
+
     return True
 
 
@@ -172,13 +119,44 @@ def execute_sql_file(connection, sql_file_path):
     conn.close()
     print("Database initialized successfully.")"""
 
-# # Example route to set a session variable
-# @app.route('/set_session/<username>')
-# def set_session(username):
-#     session['username'] = username
-#     return jsonify({"message": f"Session set for user {username}"})
+############################################################
+# Route to recognize grocery items using Google Vision API #
+############################################################
+@app.route('/api/recognize', methods=['POST'])
+def recognize_image():
+    """
+    Recognizes grocery items from an uploaded image using Google Vision API.
+    
+    Returns:
+        200 if successful with recognized labels
+        400 if the request is invalid
+        500 for internal server errors
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({"Error": "No image file provided"}), 400
+        
+        # Get the uploaded image file
+        image_file = request.files['image']
 
+        # Google vision expects image in form of bytes
+        image_bytes = image_file.read()
 
+        # Create an image object for Google Vision API
+        image = vision.Image(content=image_bytes)
+
+        # Use the Vision API to detect labels
+        response = vision_client.label_detection(image=image, max_results=3)
+
+        if response.error.message:
+            return jsonify({"Error": response.error.message}), 500
+
+        # Extract labels from the response
+        labels = [label.description for label in response.label_annotations]
+        return jsonify({"recognized_items": labels}), 200
+
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred in recognize_image(): {str(e)}"}), 500
 
 #########################################
 # Login and Logout functions, both POST #
@@ -200,16 +178,11 @@ def login():
     """
     try:
         content = request.get_json()
-        logging.debug(f"Received login request with content: {content}")
         
         if not content_is_valid(content, ['user_name', 'password']):
-            logging.debug("Content is not valid")
-            return jsonify({"message": "Content not valid"}), 400
+            return jsonify(CONTENT_NOT_VALID), 400
             
         conn = get_db_connection()
-        if conn is None:
-            return jsonify({"Error": "Failed to connect to the database"}), 500
-
         cursor = conn.cursor(dictionary=True)
        
         user_query = """SELECT user_id AS id, user_name AS username, password as hashed_password
@@ -218,57 +191,61 @@ def login():
             """
         cursor.execute(user_query, (content['user_name'],))
      
-        user = cursor.fetchall()
+        user = cursor.fetchone()
         if not user:
-            logging.debug("User not found")
             conn.close()
-            return jsonify({"message": "User not found"}), 404
-        hashed_password = user[0]['hashed_password']
+            return jsonify(USER_NOT_FOUND), 404
+        hashed_password = user['hashed_password']
+        conn.close()
         
         if bcrypt.check_password_hash(hashed_password, content['password']):
-            session["username"] = user[0]['username']
-            session["user_id"] = user[0]['id']
-            logging.debug("Login successful")
-            conn.close()
-            return jsonify({'Message': 'Login successful'}), 200
+            session["username"] = content['user_name']
+            return jsonify({'Message': 'Login successful'})
         else:
-            logging.debug("Invalid password")
-            conn.close()
             return jsonify({'Message': 'Invalid password'}), 401
     except mysql.connector.Error as err:
-        logging.error(f"Database error: {err}")
-        if conn and conn.is_connected():
-            conn.close()
+        # Database error
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        if conn and conn.is_connected():
-            conn.close()
+        # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    """
+    Logout by removing username from session
     
-####################################################################################
-# Check if user is logged in for session management                                #
-####################################################################################
+    Returns:
+        200 if successful
+        401 user not logged in
+        500 server error
+    """
+    try:
+        if 'username' not in session:
+            return jsonify({'Message': 'You are not logged in'}), 401
+        
+        session.pop('username', None)
+        return jsonify({'Message': 'Logged out successfully'}), 200
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-@app.route('/api/check_login', methods=['GET'])
+###################################
+# GET, POST, PUT, and DELETE User #
+###################################
+@app.route('/api/session', methods=['GET'])
 @cross_origin(supports_credentials=True)
-def check_login():
-    if 'username' in session:
-        return jsonify(logged_in=True, user=session['username']), 200
-    else:
-        return jsonify(logged_in=False), 200
+def check_session():
+    print("Session Data:", session.get("username"))
+    return jsonify({"username": session.get("username")})
 
 
-####################################################################################
-# GET, POST, PUT, and DELETE User. Also login via POST and change password via PUT #
-####################################################################################
-@app.route('/api/<username>', methods=['GET'])
-def get_user_info(username):
+@app.route('/api/user', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_user_info():
     """
     Returns user_id, user_name, first_name, last_name, profile_pic_url, email, phone number, SMS notifications preference, email notifications preference, and preferred notification time
    
-    username is passed in URL
+    username is given by session
    
     Returns:
     200 if successful
@@ -276,6 +253,10 @@ def get_user_info(username):
     500 internal server error
     """
     try:
+        username = session.get("username")
+        if not username:
+            return jsonify({"Error": "No active session"}), 401
+
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
        
@@ -283,19 +264,16 @@ def get_user_info(username):
             FROM GroceryApp.Users
             WHERE user_name = %s
             """
-        cursor.execute(user_query, (username,))
-        user = cursor.fetchall()
+        cursor.execute(user_query, (session['username'],))
+        user = cursor.fetchone()
+
         if not user:
             conn.close()
             return jsonify(USER_NOT_FOUND), 404
-            
-        # Handle nullable values
-        user = user[0]  # Fetch the first (and only) row
-        user['phone_number'] = user['phone_number'] or ''  # Default to empty string
-        user['profile_pic_url'] = user['profile_pic_url'] or ''  # Default to empty string
-        user['preferred_notification_time'] = str(user['preferred_notification_time']) or ''  # Convert time to string and default to empty string
-            
         conn.close()
+        for key, value in user.items():
+            if isinstance(value, timedelta):
+                user[key] = str(value)
         return jsonify(user), 200
     except mysql.connector.Error as err:
         # Database error
@@ -308,7 +286,7 @@ def get_user_info(username):
 @app.route('/api/user', methods=['POST'])
 def add_user():
     """
-    Creates user
+    Creates user, no need to login immediately after user creation
    
     User info is passed in body of message.
     Expected:
@@ -332,16 +310,13 @@ def add_user():
     try:
         content = request.get_json()
         
-        if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications']):
+
+        if not content_is_valid(content, ['user_name', 'password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications'], ['phone_number', 'profile_pic_url', 'preferred_notification_time']):
             return jsonify(CONTENT_NOT_VALID), 400
-            
-        # Provide default values for optional fields
-        content['profile_pic_url'] = content.get('profile_pic_url', '')
-        content['phone_number'] = content.get('phone_number', '')
-        content['preferred_notification_time'] = content.get('preferred_notification_time', None)
-            
-        hashed_password = bcrypt.generate_password_hash(content['password']).decode('utf-8')
         
+        hashed_password = bcrypt.generate_password_hash(content['password']).decode('utf-8')
+
+
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
@@ -352,14 +327,15 @@ def add_user():
             conn.close()
             return jsonify({"Error": "User already exists"}), 409
    
-        # Insert new grocery item
+        # Insert new user
         insert_query = """
             INSERT INTO Users (user_name, password, first_name, last_name, profile_pic_url, email, phone_number, receive_sms_notifications, receive_email_notifications, preferred_notification_time)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['user_name'], hashed_password, content['first_name'], content['last_name'], content['profile_pic_url'], content['email'], content['phone_number'], content['receive_sms_notifications'], content['receive_email_notifications'], content['preferred_notification_time']))
+        cursor.execute(insert_query, (content['user_name'], hashed_password, content['first_name'], content['last_name'], content.get('profile_pic_url'), content['email'], content.get('phone_number'), content['receive_sms_notifications'], content['receive_email_notifications'], content.get('preferred_notification_time')))
         conn.commit()
         conn.close()
+        session['username'] = content['user_name']
         return jsonify({"Message": "User created successfully"}), 201
        
     except mysql.connector.Error as err:
@@ -369,16 +345,15 @@ def add_user():
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-@app.route('/api/<username>', methods=['PUT'])
-def update_user(username):
+@app.route('/api/user', methods=['PUT'])
+def update_user():
     """
     Updates user information.
 
     User info is passed in body of message.
    
-    Expected:
-        user_name (string) (Passed in URL)
-
+    Expected (not all required):
+        username (string)
         password (string)
         first_name (string)
         last_name (string)
@@ -386,6 +361,7 @@ def update_user(username):
         email (string)
         phone_number (string)
         receive_sms_notifications (bool)
+        preferred_notification_time (TIME)
 
     Returns:
         200 if successful
@@ -396,19 +372,15 @@ def update_user(username):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
+
         content = request.get_json()
-        if not content_is_valid(content, ['password', 'first_name', 'last_name', 'email', 'receive_sms_notifications', 'receive_email_notifications']):
+
+        if not content_is_valid(content, [], ['username', 'password', 'first_name', 'last_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']):
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
-            
-        # Provide default values for optional fields
-        content['profile_pic_url'] = content.get('profile_pic_url', '')
-        content['phone_number'] = content.get('phone_number', '')
-        content['preferred_notification_time'] = content.get('preferred_notification_time', None)
 
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (username,))
+        cursor.execute(user_query, (session['username'],))
         user = cursor.fetchone()
         if not user:
             conn.close()
@@ -418,13 +390,33 @@ def update_user(username):
             conn.close()
             return jsonify(CONTENT_NOT_VALID), 400
 
-        update_query = """
+        update_fields = []
+        update_values = []
+        for item in content:
+            if item in ['username', 'password', 'first_name', 'last_name', 'email', 'phone_number', 'receive_sms_notifications', 'receive_email_notifications', 'preferred_notification_time']:
+                if item == 'password':
+                    hashed_password = bcrypt.generate_password_hash(content[item]).decode('utf-8')
+                    update_fields.append(f"{item} = %s")
+                    update_values.append(hashed_password)
+                elif item == 'username':
+                    session['username'] = content['username']
+                    update_fields.append(f"{item} = %s")
+                    update_values.append(session['username'])
+                else:
+                    update_fields.append(f"{item} = %s")
+                    update_values.append(content[item])
+
+        if not update_fields:
+            return jsonify({"Error": "None valid fields for update"}), 400
+
+        update_values.append(user['user_id'])
+
+        update_query = f"""
             UPDATE GroceryApp.Users
-            SET user_name = %s, password = %s, first_name = %s, last_name = %s, profile_pic_url = %s, email = %s, phone_number = %s, receive_sms_notifications = %s, receive_email_notifications = %s, preferred_notification_time = %s
+            SET {', '.join(update_fields)}
             WHERE user_id = %s
             """
-        hashed_password = bcrypt.generate_password_hash(content['password']).decode('utf-8')
-        cursor.execute(update_query, (username, hashed_password, content['first_name'], content['last_name'], content['profile_pic_url'], content['email'], content['phone_number'], content['receive_sms_notifications'], content['receive_email_notifications'], content['preferred_notification_time']))
+        cursor.execute(update_query, update_values)
         conn.commit()
         conn.close()
         return jsonify({"Message": "User updated successfully"}), 200
@@ -437,12 +429,12 @@ def update_user(username):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/<username>', methods=['DELETE'])
-def delete_user(username):
+@app.route('/api/user', methods=['DELETE'])
+def delete_user():
     """
     Deletes a user.
    
-    username is passed in URL
+    username is taken from session
 
     Returns:
         200 if successful
@@ -454,7 +446,7 @@ def delete_user(username):
         cursor = conn.cursor(dictionary=True)
 
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (username,))
+        cursor.execute(user_query, (session['username'],))
         user = cursor.fetchone()
         if not user:
             conn.close()
@@ -468,9 +460,13 @@ def delete_user(username):
 
         delete_query_users = "DELETE FROM GroceryApp.Users WHERE user_id = %s"
         cursor.execute(delete_query_users, (user['user_id'],))
+
+        delete_query_userusage = "DELETE FROM GroceryApp.UserUsage WHERE user_id = %s"
+        cursor.execute(delete_query_userusage, (user['user_id'],))
        
         conn.commit()
         conn.close()
+        session.pop('username', None)
         return jsonify({"Message": "User deleted successfully"}), 200
 
     except mysql.connector.Error as err:
@@ -481,53 +477,57 @@ def delete_user(username):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-################################################################
+#####################################################################
 # GET, POST, PUT, DELETE User's Groceries (in GroceryApp.Inventory) #
-################################################################
+#####################################################################
 @app.route('/api/groceries', methods=['GET'])
-@jwt_required()
 def get_groceries():
     """
-    Returns grocery items for the logged-in user.
+    Returns grocery items for the specified user.
+   
+    username is passed in session
    
     Returns:
         200 if groceries successfully returned
-        401 if user not logged in
         404 if user not found or user has no groceries
         500 Internal Server Error: Database error.
-    """   
+    """
     try:
-        current_user = get_jwt_identity()
-        
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (current_user,))
+        cursor.execute(user_query, (session['username'],))
         user = cursor.fetchone()
-        
         if not user:
             conn.close()
             return jsonify({"Error": "User not found"}), 404
 
-        groceries_query = "SELECT * FROM GroceryApp.Inventory WHERE user_id = %s"
-        cursor.execute(groceries_query, (user['user_id'],))
-        groceries = cursor.fetchall()
-        
+        query = """
+            SELECT i.inventory_id AS id, f.food_name AS name, i.quantity
+            FROM GroceryApp.Inventory i
+            JOIN GroceryApp.Users u ON i.user_id = u.user_id
+            JOIN GroceryApp.AllFoods f ON i.food_id = f.food_id
+            WHERE u.user_name = %s
+        """
+        cursor.execute(query, (session['username'],))  # Comma after username makes it a tuple
+
+        # Check if user exists
+        results = cursor.fetchall()
+        if not results:
+            conn.close()
+            return jsonify({"Error": "No groceries"}), 404
+
         conn.close()
-        
-        if not groceries:
-            return jsonify({"Error": "No groceries found"}), 404
-        
-        return jsonify(groceries), 200
+        return jsonify(results), 200
+
     except mysql.connector.Error as err:
         # Database error
-        print(f"Database error: {err}")
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         # General error
-        print(f"An error occurred: {e}")
         return jsonify({"Error": f"An error occurred: {e}"}), 500
+
 
 @app.route('/api/groceries', methods=['POST'])
 def add_grocery():
@@ -537,7 +537,6 @@ def add_grocery():
     {
         "food_id": int,
         "quantity": int,
-        'user_id': int,
         'location_id: int,
         'expiration_date: date,
         'date_purchase': date,
@@ -554,7 +553,7 @@ def add_grocery():
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['food_id', 'quantity', 'user_id', 'location_id', 'expiration_date', 'date_purchase', 'status', 'categor']):
+    if not content_is_valid(content, ['food_id', 'quantity', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
         return jsonify(CONTENT_NOT_VALID), 400
     
     try:
@@ -562,12 +561,13 @@ def add_grocery():
         cursor = conn.cursor(dictionary=True)
     
         # Check if user id exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_id = %s"
-        cursor.execute(user_query, (content['user_id'],))
+        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
+        cursor.execute(user_query, (session['username'],))
         user = cursor.fetchone()
         if not user:
             conn.close()
             return jsonify({"Error": "User not found"}), 404
+        user_id = user['user_id']  # Store the user ID
             
         # Check if food id exists
         user_query = "SELECT food_id FROM GroceryApp.AllFoods WHERE food_id = %s"
@@ -590,7 +590,7 @@ def add_grocery():
             INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, location_id, expiration_date, date_purchase, status, category)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['food_id'], content['quantity'], content['user_id'], content['location_id'], content['expiration_date'], content['date_purchase'], content['status'], content['category']))
+        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['location_id'], content['expiration_date'], content['date_purchase'], content['status'], content['category']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Grocery item created successfully"}), 201
@@ -602,18 +602,16 @@ def add_grocery():
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/groceries/<int:inventory_id>', methods=['PUT'])
-def update_grocery(inventory_id):
+@app.route('/api/groceries', methods=['PUT'])
+def update_grocery():
     """
     Updates an existing grocery item in the inventory for the specified user.
 
-    Inventory ID passed in URL
-
     Request Body:
     {
+        'inventory_id': int,
         "food_id": int,
         "quantity": int,
-        "user_id": int,
         "location_id": int,
         "expiration_date": date,
         "date_purchase": date,
@@ -629,7 +627,7 @@ def update_grocery(inventory_id):
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['food_id', 'quantity', 'user_id', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
+    if not content_is_valid(content, ['inventory_id', 'food_id', 'quantity', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
         return jsonify(CONTENT_NOT_VALID), 400
     
     try:
@@ -638,19 +636,21 @@ def update_grocery(inventory_id):
         
         # Check if the inventory item exists
         inventory_query = "SELECT * FROM GroceryApp.Inventory WHERE inventory_id = %s"
-        cursor.execute(inventory_query, (inventory_id,))
+        cursor.execute(inventory_query, (content['inventory_id'],))
         inventory_item = cursor.fetchone()
         if not inventory_item:
             conn.close()
             return jsonify({"Error": "Inventory item not found"}), 404
 
         # Check if the user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_id = %s"
-        cursor.execute(user_query, (content['user_id'],))
+        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
+        cursor.execute(user_query, (session['username'],))
         user = cursor.fetchone()
         if not user:
             conn.close()
             return jsonify({"Error": "User not found"}), 404
+        user_id = user['user_id']  # Store the user ID
+        
 
         # Check if the food exists
         food_query = "SELECT food_id FROM GroceryApp.AllFoods WHERE food_id = %s"
@@ -675,7 +675,7 @@ def update_grocery(inventory_id):
             WHERE inventory_id = %s
         """
         cursor.execute(update_query, (
-            content['food_id'], content['quantity'], content['user_id'], 
+            content['food_id'], content['quantity'], user_id, 
             content['location_id'], content['expiration_date'], content['date_purchase'], 
             content['status'], content['category'], inventory_id
         ))
@@ -688,38 +688,48 @@ def update_grocery(inventory_id):
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
-        
 
-@app.route('/api/groceries/<username>', methods=['DELETE'])
-def delete_grocery(username):
+
+@app.route('/api/groceries', methods=['DELETE'])
+def delete_grocery():
     """
-    Deletes a grocery item from GroceryApp.Inventory.
-   
-    username is passed in URL
+    Deletes a specific grocery item from GroceryApp.Inventory.
+    
+    username is passed in session
+    grocery_id is passed in URL parameters
 
     Returns:
         200 if successful
-        404 if user not found
+        404 if user not found or grocery item not found
         500 Internal Server error or database error
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        # Check if user exists
         user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (username,))
+        cursor.execute(user_query, (session['username'],))
         user = cursor.fetchone()
         if not user:
             conn.close()
             return jsonify({"Error": "User not found"}), 404
-           
-        # Delete records from related tables (e.g., Inventory)
-        delete_query_inventory = "DELETE FROM GroceryApp.Inventory WHERE user_id = %s"
-        cursor.execute(delete_query_inventory, (user['user_id'],))
-       
+
+        # Check if grocery item exists and belongs to user
+        grocery_query = "SELECT * FROM GroceryApp.Inventory WHERE user_id = %s AND grocery_id = %s"
+        cursor.execute(grocery_query, (user['user_id'], grocery_id))
+        grocery = cursor.fetchone()
+        if not grocery:
+            conn.close()
+            return jsonify({"Error": "Grocery item not found"}), 404
+
+        # Delete grocery item
+        delete_query = "DELETE FROM GroceryApp.Inventory WHERE user_id = %s AND grocery_id = %s"
+        cursor.execute(delete_query, (user['user_id'], grocery_id))
+
         conn.commit()
         conn.close()
-        return jsonify({"Message": "User deleted successfully"}), 200
+        return jsonify({"Message": "Grocery item deleted successfully"}), 200
 
     except mysql.connector.Error as err:
         # Database error
@@ -749,7 +759,7 @@ def get_food_item(food_name):
         cursor = conn.cursor(dictionary=True)
 
         query = """
-            SELECT food_id, food_name, expiration_days, quantity, food_type
+            SELECT food_id, food_name, expiration_days, quantity, food_type, recipe_id
             FROM GroceryApp.AllFoods
             WHERE food_name = %s
         """
@@ -780,26 +790,37 @@ def add_food_item():
     {
         "food_name": "string",
         "expiration_days": "int",
-        "food_type": "string"
+        "food_type": "string",
+        'recipe_id': 'string'
     }
     Returns:
         201 Created: New grocery item created successfully.
         400 Bad Request: Invalid request body.
+        404 recipe_id not found
         500 Internal Server Error: Database error.
     """
 
     # Get food ID
     data = request.get_json()
-    if not content_is_valid(data, ['food_name', 'expiration_days', 'food_type']):
+    if not content_is_valid(data, ['food_name', 'expiration_days', 'food_type', 'recipe_id']):
         return jsonify(CONTENT_NOT_VALID), 400
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # Check if recipe ID exists
+        recipe_query = "SELECT recipe_id FROM GroceryApp.Recipes WHERE recipe_id = %s"
+        cursor.execute(recipe_query, (data['recipe_id'],))
+        recipe = cursor.fetchone()
+        if not recipe:
+            conn.close()
+            return jsonify({"Error": "Recipe ID not found"}), 404
+        
         insert_query = """
-            INSERT INTO GroceryApp.AllFoods (food_name, expiration_days, food_type)
-            VALUES (%s, %s, %s)
+            INSERT INTO GroceryApp.AllFoods (food_name, expiration_days, food_type, 'recipe_id')
+            VALUES (%s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (data['food_name'], data['expiration_days'], data['food_type']))
+        cursor.execute(insert_query, (data['food_name'], data['expiration_days'], data['food_type'], data['recipe_id']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Food item created successfully"}), 201
@@ -840,6 +861,10 @@ def delete_food_item(food_name):
         # Delete records from related table (e.g., Ingredients)
         delete_query_ingredients = "DELETE FROM GroceryApp.Ingredients WHERE food_id = %s"
         cursor.execute(delete_query_ingredients, (user['food_id'],))
+
+        # Delete records from related table (e.g., UserUsage)
+        delete_query_userusage = "DELETE FROM GroceryApp.UserUsage WHERE food_id = %s"
+        cursor.execute(delete_query_userusage, (user['food_id'],))
         
         delete_query = "DELETE FROM GroceryApp.AllFoods WHERE food_id = %s"
         cursor.execute(delete_query, (user['food_id'],))
@@ -868,21 +893,31 @@ def get_location(location_name):
    
     Returns:
         200 if location information successfully returned
-        404 if location not found
+        404 if location or user not found
         500 Internal Server Error: Database error.
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+
+        # Check if the user exists
+        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
+        cursor.execute(user_query, (session['username'],))
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return jsonify({"Error": "User not found"}), 404
+        user_id = user['user_id']  # Store the user ID
+        
         query = """
             SELECT location_id, location_name
             FROM GroceryApp.Locations
-            WHERE location_name = %s
+            WHERE location_name = %s AND user_id = %s
         """
-        cursor.execute(query, (location_name,))  # Comma after username makes it a tuple
+        cursor.execute(query, (location_name, user_id))  # Comma after username makes it a tuple
 
-        # Check if user exists
+        # Check if location exists
         results = cursor.fetchall()
         if not results:
             conn.close()
@@ -898,10 +933,52 @@ def get_location(location_name):
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+@app.route('/api/locations', methods=['GET'])
+def get_locations():
+    """
+    Returns all location information for the current user.
+    
+    Returns:
+        200 if location information successfully returned
+        404 if user not found
+        500 Internal Server Error: Database error.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if user exists
+        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
+        cursor.execute(user_query, (session['username'],))
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return jsonify({"Error": "User not found"}), 404
+        user_id = user['user_id']
+
+        query = """
+            SELECT location_id, location_name
+            FROM GroceryApp.Locations
+            WHERE user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+
+        results = cursor.fetchall()
+        conn.close()
+        return jsonify(results), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
 @app.route('/api/location', methods=['POST'])
 def add_location():
     """
     Create a new location
+
+    user_id taken from username in session
+    
     Request Body:
     {
         "location_name": "string",
@@ -918,12 +995,21 @@ def add_location():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # Check if user exists
+        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
+        cursor.execute(user_query, (session['username'],))
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return jsonify({"Error": "User not found"}), 404
+        user_id = user['user_id']
         
         insert_query = """
-            INSERT INTO GroceryApp.Locations (location_name)
-            VALUES (%s)
+            INSERT INTO GroceryApp.Locations (location_name, user_id)
+            VALUES (%s, %s)
         """
-        cursor.execute(insert_query, (data['location_name'],))
+        cursor.execute(insert_query, (data['location_name'], user_id))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Location item created successfully"}), 201
@@ -951,20 +1037,29 @@ def delete_location(location_name):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        user_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_name = %s"
-        cursor.execute(user_query, (location_name,))
+        # Check if user exists
+        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
+        cursor.execute(user_query, (session['username'],))
         user = cursor.fetchone()
         if not user:
+            conn.close()
+            return jsonify({"Error": "User not found"}), 404
+        user_id = user['user_id']
+
+        user_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_name = %s AND user_id = %s"
+        cursor.execute(user_query, (location_name, user_id))
+        location = cursor.fetchone()
+        if not location:
             conn.close()
             return jsonify({"Error": "Location not found"}), 404
 
         # Delete records from related table (e.g., Inventory)
         delete_query_inventory = "DELETE FROM GroceryApp.Inventory WHERE location_id = %s"
-        cursor.execute(delete_query_inventory, (user['location_id'],))
+        cursor.execute(delete_query_inventory, (location['location_id'],))
 
         # Delete records from Locations
         delete_query = "DELETE FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(delete_query, (user['location_id'],))
+        cursor.execute(delete_query, (location['location_id'],))
 
         conn.commit()
         conn.close()
@@ -998,21 +1093,17 @@ def get_recipe(recipe_name):
         cursor = conn.cursor(dictionary=True)
 
         query = """
-            SELECT recipe_id, recipe_name, recipe_url, user_id, recipe_notification
+            SELECT recipe_id, recipe_name
             FROM GroceryApp.Recipes
             WHERE recipe_name = %s
         """
         cursor.execute(query, (recipe_name,))  # Comma after username makes it a tuple
 
-        # Check if user exists
+        # Check if recipe exists
         results = cursor.fetchall()
         if not results:
             conn.close()
             return jsonify({"Error": "No recipe with that name exists"}), 404
-            
-        # Handle nullable recipe_notification
-        results = results[0]
-        results['recipe_notification'] = results.get('recipe_notification', None) or ''
 
         conn.close()
         return jsonify(results), 200
@@ -1030,11 +1121,8 @@ def add_recipe():
     Create a new recipe
     Request Body:
     {
-        'recipe_id': int,
         'recipe_name': string,
-        'recipe_url': string,
-        'user_id': int,
-        'recipe_notification': bool
+        'recipe_url': string
     }
     Returns:
         201 Created: New recipe created successfully.
@@ -1042,21 +1130,18 @@ def add_recipe():
         500 Internal Server Error: Database error.
     """
     data = request.get_json()
-    if not content_is_valid(data, ['recipe_name', 'recipe_url', 'user_id']):
+    if not content_is_valid(data, ['recipe_name', 'recipe_url']):
         return jsonify(CONTENT_NOT_VALID), 400
-        
-     # Provide default values for optional fields
-    data['recipe_notification'] = data.get('recipe_notification', False)
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
         insert_query = """
-            INSERT INTO GroceryApp.Recipes (recipe_name, recipe_url, user_id, recipe_notification)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO GroceryApp.Recipes (recipe_name, recipe_url)
+            VALUES (%s, %s)
         """
-        cursor.execute(insert_query, (data['recipe_name'], data['recipe_url'], data['user_id'], data['recipe_notification']))
+        cursor.execute(insert_query, (data['recipe_name'], data['recipe_url']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Recipe item created successfully"}), 201
@@ -1084,18 +1169,18 @@ def delete_recipe(recipe_name):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        user_query = "SELECT recipe_id FROM GroceryApp.Recipes WHERE recipe_name = %s"
-        cursor.execute(user_query, (recipe_name,))
+        recipe_query = "SELECT recipe_id FROM GroceryApp.Recipes WHERE recipe_name = %s"
+        cursor.execute(recipe_query, (recipe_name,))
         user = cursor.fetchone()
         if not user:
             conn.close()
             return jsonify({"Error": "Location not found"}), 404
         
-        # Delete records from related table (e.g., Inventory)
-        delete_query_inventory = "DELETE FROM GroceryApp.Ingredients WHERE recipe_id = %s"
-        cursor.execute(delete_query_inventory, (user['recipe_id'],))
+        # Delete records from related table (e.g., Ingredients)
+        delete_query_ingredients = "DELETE FROM GroceryApp.Ingredients WHERE recipe_id = %s"
+        cursor.execute(delete_query_ingredients, (user['recipe_id'],))
         
-        # Delete records from Locations
+        # Delete records from Recipes
         delete_query = "DELETE FROM GroceryApp.Recipes WHERE recipe_id = %s"
         cursor.execute(delete_query, (user['recipe_id'],))
        
@@ -1109,8 +1194,8 @@ def delete_recipe(recipe_name):
     except Exception as e:
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
-        
-        
+
+
 ######################################
 # GET, POST, DELETE from Ingredients #
 ######################################
@@ -1119,7 +1204,7 @@ def get_ingredients(recipe_id):
     """
     Returns all rows from Ingredients that have recipe_id.
    
-    recipe id is passed in URL
+    recipe_id is passed in URL
    
     Returns:
         200 if recipe rows successfully returned
@@ -1228,6 +1313,160 @@ def delete_ingredient(recipe_id):
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+#######################################
+# Two POSTs and one GET for UserUsage #
+#######################################
+@app.route('/api/use', methods=['POST'])
+def add_use():
+    """
+    Creates UserUsage instance if instance does not already exist and sets times_used to 1. If instance does exist, adds 1 to times_used.
+   
+    Expected:
+        user_id (int)
+        food_id (int)
+       
+    Returns:
+        201 if successful
+        400 body content Invalid
+        500 Internal Server error or database error
+    """
+    try:
+        content = request.get_json()
+        
+
+        if not content_is_valid(content, ['user_id', 'food_id']):
+            return jsonify(CONTENT_NOT_VALID), 400
+        
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Insert or update usage
+        insert_query = """
+            INSERT INTO UserUsage (user_id, food_id, times_used)
+            VALUES (%s, %s, 1)
+            ON DUPLICATE KEY UPDATE times_used = times_used + 1
+        """
+        cursor.execute(insert_query, (content['user_id'], content['food_id']))
+        conn.commit()
+        conn.close()
+        return jsonify({"Message": "Use added successfully"}), 201
+       
+    except mysql.connector.Error as err:
+        # Database error
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+@app.route('/api/spoil', methods=['POST'])
+def add_spoil():
+    """
+    Creates UserUsage instance if instance does not already exist and sets times_spoiled to 1. If instance does exist, adds 1 to times_spoiled.
+   
+    Expected:
+        user_id (int)
+        food_id (int)
+       
+    Returns:
+        201 if successful
+        400 body content Invalid
+        500 Internal Server error or database error
+    """
+    try:
+        content = request.get_json()
+        
+
+        if not content_is_valid(content, ['user_id', 'food_id']):
+            return jsonify(CONTENT_NOT_VALID), 400
+        
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Insert or update usage
+        insert_query = """
+            INSERT INTO UserUsage (user_id, food_id, times_spoiled)
+            VALUES (%s, %s, 1)
+            ON DUPLICATE KEY UPDATE times_spoiled = times_spoiled + 1
+        """
+        cursor.execute(insert_query, (content['user_id'], content['food_id']))
+        conn.commit()
+        conn.close()
+        return jsonify({"Message": "Spoil added successfully"}), 201
+       
+    except mysql.connector.Error as err:
+        # Database error
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
+        # General error
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
+
+@app.route('/api/suggestions/<user_name>', methods=['GET'])
+def get_suggestions(user_name):
+    """
+    Retrieves top 5 spoiled and used foods for the given user.
+   
+    Expected: user_name passed in URL
+       
+    Returns:
+        200 if successful
+        404 user has no instances of UserUsage
+        500 Internal Server error or database error
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        query = """
+            (
+              SELECT 
+                food_id,
+                times_spoiled,
+                'spoiled' as type
+              FROM 
+                UserUsage
+              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+              ORDER BY 
+                times_spoiled DESC
+              LIMIT 5
+            )
+            UNION ALL
+            (
+              SELECT 
+                food_id,
+                times_used,
+                'used' as type
+              FROM 
+                UserUsage
+              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+              ORDER BY 
+                times_used DESC
+              LIMIT 5
+            )
+        """
+        cursor.execute(query, (user_name, user_name))
+        result = cursor.fetchall()
+        
+        if not result:
+            conn.close()
+            return jsonify({"Error": "No suggestions found"}), 404
+        
+        top_spoiled = [item for item in result if item['type'] == 'spoiled'] # List comprehension
+        top_used = [item for item in result if item['type'] == 'used']
+        
+        conn.close()
+        return jsonify({
+            "top_spoiled": top_spoiled,
+            "top_used": top_used
+        }), 200
+       
+    except mysql.connector.Error as err:
+        return jsonify({"Error": f"Database error: {err}"}), 500
+    except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
