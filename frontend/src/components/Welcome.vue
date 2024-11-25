@@ -11,36 +11,48 @@
       <li>🧮 Get stats on food item usage</li>
     </ul>
 
-    <button @click="goToGroceryList" class="btn1 get-started">
-      Get Started
-    </button>
+    <div class="button-container">
+      <button @click="goToGroceryList" class="btn get-started">
+        Get Started
+      </button>
 
-    <button @click="goToProfile" class="btn2 get-started">
-      Profile Page
-    </button>
+      <button @click="goToProfile" class="btn get-started">
+        Profile Page
+      </button>
+
+      <button @click="toggleSignupForm" class="btn get-started">
+        {{ showSignupForm ? '' : ' Sign Up' }}
+      </button>
+    </div>
+
+    <!-- Popup form to sign up -->
+    <div v-if="showSignupForm" class="popup-overlay" @click="toggleSignupForm">
+      <div class="popup-content" @click.stop>
+        <CreateProfile @close="toggleSignupForm" />
+      </div>
+    </div>  
+
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import CreateProfile from '../components/CreateProfile.vue';
 
-export default {
-  setup() {
-    const router = useRouter();
+const router = useRouter();
+const showSignupForm = ref(false);
 
-    const goToGroceryList = () => {
-      router.push('/add');
-    };
+const goToGroceryList = () => {
+  router.push('/add');
+};
 
-    const goToProfile = () => {
-      router.push({ name: 'profile' });
-    };
+const goToProfile = () => {
+  router.push({ name: 'profile' });
+};
 
-    return {
-      goToGroceryList,
-      goToProfile
-    };
-  }
+const toggleSignupForm = () => {
+  showSignupForm.value = !showSignupForm.value;
 };
 </script>
 
@@ -76,26 +88,26 @@ export default {
   margin-bottom: 10px;
 }
 
-.btn1 {
-  background-color: #4caf50;
-  color: white;
-  border: solid 3px --var glacier;    
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 5px;
-  font-size: 1em;
-  margin: 20px 0; 
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px; /* Adjust the gap between buttons as needed */
+  margin-top: 20px;
 }
 
-.btn2 {
+.btn {
   background-color: #4caf50;
   color: white;
-  border: solid 3px --var glacier;    
+  border: solid 1px var(--glacierWater);    
   padding: 10px 20px;
   cursor: pointer;
   border-radius: 5px;
   font-size: 1em;
-  margin: 20px 0; 
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .btn:hover {
