@@ -1469,6 +1469,47 @@ def get_suggestions(user_name):
     except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+###############################################################################
+# Checks daily for upcoming expiring food items and sends user a notification #
+###############################################################################
+@app.route('/api/daily-check', methods=['POST'])
+def daily_check():
+    """
+    Performs a daily check for expiring grocery items.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Query the database for expiring items
+        query = """
+            SELECT 
+                i.inventory_id,
+                af.food_name,
+                i.expiration_date,
+                u.user_id,
+                u.email
+            FROM 
+                Inventory i
+            JOIN 
+                AllFoods af ON i.food_id = af.food_id
+            JOIN 
+                Users u ON i.user_id = u.user_id
+            WHERE 
+                i.expiration_date <= CURDATE() + INTERVAL 3 DAY
+        """
+        cursor.execute(query)
+
+        expiring_items = cursor.fetchall()
+
+        # Send notifications for expiring items
+        for item in expiring_items:
+            # Implement notification logic here (e.g., send email, push notification)
+
+        conn.close()
+        return jsonify({"Message": "Daily check completed successfully"}), 200
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
