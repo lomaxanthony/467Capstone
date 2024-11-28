@@ -1502,6 +1502,14 @@ def daily_check():
 
         expiring_items = cursor.fetchall()
 
+        # Delete expired items
+        delete_query = """
+            DELETE FROM Inventory
+            WHERE expiration_date < CURDATE()
+        """
+        cursor.execute(delete_query)
+        conn.commit()
+
         # Send notifications for expiring items
         for item in expiring_items:
             # Implement notification logic here (e.g., send email, push notification)
