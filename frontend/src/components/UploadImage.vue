@@ -1,84 +1,118 @@
 <template>
-  <div id="app">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-      <div class="container-fluid">
-        <router-link to="/" class="navbar-brand">Grocery Buddy</router-link>
-
-        <button 
-          class="navbar-toggler" 
-          type="button" 
-          data-bs-toggle="collapse" 
-          data-bs-target="#navbarNav" 
-          aria-controls="navbarNav" 
-          aria-expanded="false" 
-          aria-label="Toggle navigation"
-        >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <router-link to="/" class="nav-link" active-class="active">Home</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/add" class="nav-link" active-class="active">My Pantry</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/recipes" class="nav-link" active-class="active">Recipes</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/profile" class="nav-link" active-class="active">User Profile</router-link>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-
-    <main>
-      <router-view></router-view>
-    </main>
+  <div class="upload-container">
+    <h3>Upload Image</h3>
+    <p class="blurb">Use our powerful AI to recognize your grocery items from an image.</p>
+    <input type="file" @change="handleFileUpload" />
+    <button @click="recognizeItem" class="btn btn-primary">Recognize Item</button>
+    <div v-if="recognizedItem" class="result">
+      <p>Recognized Item: {{ recognizedItem }}</p>
+    </div>
+    <button type="button" class="btn btn-secondary" @click="$emit('close')">Close</button>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'App',
+<script setup>
+import { ref } from 'vue';
+
+const recognizedItem = ref('');
+const file = ref(null);
+
+const handleFileUpload = (event) => {
+  file.value = event.target.files[0];
+};
+
+const recognizeItem = async () => {
+  if (!file.value) {
+    alert('Please upload an image first.');
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file.value);
+
+    const response = await fetch('http://your-api-endpoint/recognize', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to recognize item');
+    }
+
+    const data = await response.json();
+    recognizedItem.value = data.recognizedItem; // Assuming the API returns { recognizedItem: 'Tomato' }
+  } catch (error) {
+    console.error('Error recognizing item:', error);
+    alert('Failed to recognize item. Please try again.');
+  }
 };
 </script>
 
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/darkly/bootstrap.min.css';
-
-#app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-main {
-  flex: 1;
+.upload-container {
+  background-color: var(--darkerMountainShadow);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 100%; 
-  padding: 20px;
-  background-color: var(--mountainShadow);
 }
 
-.navbar-brand {
-  font-weight: bold;
-  font-size: 1.8rem;
+h3 {
+  text-align: center;
+  margin-bottom: 10px;
   color: var(--freshVeg);
 }
 
-.navbar-nav .nav-link {
+.blurb {
+  text-align: center;
+  margin-bottom: 20px;
   color: var(--glacierWater);
+  font: bold;
 }
 
-.navbar-nav .nav-link.active {
-  font-weight: bold;
+input[type="file"] {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.btn {
+  display: block;
+  margin: 10px auto;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%; 
+  max-width: 200px;
+}
+
+.btn-primary {
+  background-color: #4caf50;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #45a049;
+}
+
+.btn-secondary {
+  background-color: #f44336;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #e53935;
+}
+
+.result {
+  margin-top: 20px;
+  text-align: center;
   color: var(--freshVeg);
 }
 </style>

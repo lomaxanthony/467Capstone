@@ -1,76 +1,65 @@
 <template>
-  <main>
-    <ItemList :items="groceries" /> 
-    
-    <div class="button-group">
-      <button @click="toggleAddForm" class="action-btn">
-        {{ showAddForm ? '➖' : '➕ Add Items' }}
-      </button>
-      <button @click="toggleDeleteForm" class="action-btn">
-        {{ showDeleteForm ? '➖' : '🗑️ Delete Items' }}
-      </button>
-      <button @click="toggleUploadForm" class="action-btn">
-        {{ showUploadForm ? '➖' : '📷 Upload Image' }}
-      </button>
-    </div>
-
-    <div v-if="showAddForm" class="popup-overlay" @click="toggleAddForm">
-      <div class="popup-content" @click.stop>
-        <AddItem @item-added="addItemToList" @close="toggleAddForm" />
+  <div>
+    <main>
+      <div class="button-group">
+        <button @click="toggleAddForm" class="action-btn">
+          {{ showAddForm ? '➖' : '➕ Add Item' }}
+        </button>
+        <button @click="toggleDeleteForm" class="action-btn">
+          {{ showDeleteForm ? '➖' : '🗑️ Delete Item' }}
+        </button>
+        <button @click="toggleUploadForm" class="action-btn">
+          {{ showUploadForm ? '➖' : '📷 Upload Image' }}
+        </button>
       </div>
-    </div>
 
-    <div v-if="showDeleteForm" class="popup-overlay" @click="toggleDeleteForm">
-      <div class="popup-content" @click.stop>
-        <DeleteItem :items="groceries" @delete-items="deleteItems" @close="toggleDeleteForm" />
+      <div v-if="showAddForm" class="popup-overlay" @click="toggleAddForm">
+        <div class="popup-content" @click.stop>
+          <AddItem @item-added="addItemToList" @close="toggleAddForm" />
+        </div>
       </div>
-    </div>
 
-    <div v-if="showUploadForm" class="popup-overlay" @click="toggleUploadForm">
-      <div class="popup-content" @click.stop>
-        <UploadImage @close="toggleUploadForm" />
+      <div v-if="showDeleteForm" class="popup-overlay" @click="toggleDeleteForm">
+        <div class="popup-content" @click.stop>
+          <DeleteItem :items="groceries" @delete-items="deleteItems" @close="toggleDeleteForm" />
+        </div>
       </div>
-    </div>
-  </main>
+
+      <div v-if="showUploadForm" class="popup-overlay" @click="toggleUploadForm">
+        <div class="popup-content" @click.stop>
+          <UploadImage @close="toggleUploadForm" />
+        </div>
+      </div>
+    </main>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import AddItem from '../components/AddItem.vue';
-import ItemList from '../components/ItemList.vue';
-import DeleteItem from '@/components/DeleteItem.vue';
+import DeleteItem from '../components/DeleteItem.vue';
 import UploadImage from '../components/UploadImage.vue';
 
 const groceries = ref([]);
 const showAddForm = ref(false);
 const showDeleteForm = ref(false);
 const showUploadForm = ref(false);
+// const username = ref('');
+const isLoggedIn = ref(false);
+const router = useRouter();
 
-
-// Fetch groceries from the API
-const fetchGroceries = async () => {
+// Add items to list and persist
+const addItem = async (newItem) => {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/groceries');
-    const data = await response.json();
-    console.log('API Response:', data); 
-    groceries.value = Array.isArray(data) ? data : []; 
-  } catch (error) {
-    console.error('Failed to fetch groceries:', error);
-  }
-};
-
-// Add new item to list 
-const addItemToList = async (newItem) => {
-  try {
-
     const response = await fetch('http://127.0.0.1:5000/api/groceries', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(newItem),
+      body: JSON.stringify(newItem)
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to add item to the database');
     }
@@ -82,6 +71,11 @@ const addItemToList = async (newItem) => {
   } catch (error) {
     console.error('Failed to add item:', error);
   }
+};
+
+// Add item to list (used by AddItem component)
+const addItemToList = (newItem) => {
+  groceries.value.push(newItem);
 };
 
 // Delete items from list and persist
@@ -122,7 +116,35 @@ const toggleUploadForm = () => {
 };
 
 // Fetch groceries from API to get the latest data
-onMounted(async () => {  
+const fetchGroceries = async () => {
+  try {
+    const response = await fetch('http://127.0.0.1:5000/api/groceries');
+    const data = await response.json();
+    groceries.value = data;
+  } catch (error) {
+    console.error('Failed to fetch groceries:', error);
+  }
+};
+
+// Check if user is logged in
+const checkLogin = async () => {
+  try {
+    const response = await fetch('http://127.0.0.1:5000/api/check_login', {
+      method: 'GET',
+      credentials: 'include', // Include credentials (cookies) in the request
+    });
+    const data = await response.json();
+    isLoggedIn.value = data.logged_in;
+    if (!isLoggedIn.value) {
+      router.push('/login'); // Redirect to login page if not logged in
+    }
+  } catch (error) {
+    console.error('Failed to check login status:', error);
+  }
+};
+
+
+onMounted(async () => { 
   await fetchGroceries();
 });
 </script>
@@ -146,10 +168,8 @@ main {
   border: none;
   padding: 10px 20px;
   cursor: pointer;
-  border-radius: 5px;
 }
 
-/* Popup overlay for the form */
 .popup-overlay {
   position: fixed;
   top: 0;
@@ -158,18 +178,13 @@ main {
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 10;
+  align-items: center;
 }
 
-/* Popup content styling */
 .popup-content {
-  background-color: var(--lighterMountainShadow);
-  padding: 30px;
-  border-radius: 10px;
-  width: 400px;
-  max-width: 95%;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  background: rgb(56, 59, 59);
+  padding: 40px;
+  border-radius: 8px;
 }
-</style>
+</style> 
