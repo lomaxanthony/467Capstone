@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Users` (
   `user_name` VARCHAR(50) NOT NULL,
   `first_name` VARCHAR(50) NOT NULL,
   `last_name` VARCHAR(50) NOT NULL,
-  `profile_pic_url` VARCHAR(50),
+  `profile_pic_url` VARCHAR(2083),
   `email` VARCHAR(50) NOT NULL,
   `phone_number` VARCHAR(15) NULL DEFAULT NULL,
   `password` CHAR(60) NOT NULL,
@@ -44,28 +44,13 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`AllFoods` (
   `food_name` VARCHAR(50) NOT NULL,
   `expiration_days` INT NOT NULL CHECK (expiration_days > 0),
   `food_type` VARCHAR(50) NOT NULL,
-  `recipe_id` INT NOT NULL,
+  `recipe_id` INT NULL,
   PRIMARY KEY (`food_id`),
   UNIQUE (`food_name`),
   CONSTRAINT `fk_allfoods_recipe_id`
     FOREIGN KEY (`recipe_id`)
     REFERENCES `GroceryApp`.`Recipes` (`recipe_id`)
-    ON DELETE CASCADE
-  
-);
-
--- -----------------------------------------------------
--- Table `GroceryApp`.`Locations`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `GroceryApp`.`Locations` (
-  `location_id` INT NOT NULL AUTO_INCREMENT,
-  `location_name` VARCHAR(50) NOT NULL,
-  PRIMARY KEY (`location_id`),
-  UNIQUE (`location_name`, `user_id`),
-  CONSTRAINT `fk_locations_user_id`
-    FOREIGN KEY (`user_id`)
-    REFERENCES `GroceryApp`.`Users` (`user_id`)
-    ON DELETE CASCADE
+    ON DELETE SET NULL
 );
 
 -- -----------------------------------------------------
@@ -75,13 +60,8 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Recipes` (
   `recipe_id` INT NOT NULL AUTO_INCREMENT,
   `recipe_name` VARCHAR(50) NOT NULL,
   `recipe_url` VARCHAR(255) NOT NULL,
-  `user_id` INT NOT NULL,
   PRIMARY KEY (`recipe_id`),
-  UNIQUE (`recipe_name`, `user_id`),
-  CONSTRAINT `fk_recipes_user_id`
-    FOREIGN KEY (`user_id`)
-    REFERENCES `GroceryApp`.`Users` (`user_id`)
-    ON DELETE CASCADE
+  UNIQUE (`recipe_name`)
 );
 
 CREATE INDEX `idx_recipes_user_id` ON `GroceryApp`.`Recipes` (`user_id` ASC) VISIBLE;
@@ -94,7 +74,6 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Inventory` (
   `food_id` INT NOT NULL,
   `quantity` INT NOT NULL,
   `user_id` INT NOT NULL,
-  `location_id` INT NOT NULL,
   `expiration_date` DATE NOT NULL,
   `date_purchase` DATE NOT NULL,
   `status` ENUM('fresh', 'used', 'spoiled') NOT NULL DEFAULT 'fresh',
@@ -107,16 +86,11 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Inventory` (
   CONSTRAINT `fk_inventory_user_id`
     FOREIGN KEY (`user_id`)
     REFERENCES `GroceryApp`.`Users` (`user_id`)
-    ON DELETE CASCADE,
-  CONSTRAINT `fk_inventory_location_id`
-    FOREIGN KEY (`location_id`)
-    REFERENCES `GroceryApp`.`Locations` (`location_id`)
     ON DELETE CASCADE
 );
 
 CREATE INDEX `idx_inventory_food_id` ON `GroceryApp`.`Inventory` (`food_id` ASC) VISIBLE;
 CREATE INDEX `idx_inventory_user_id` ON `GroceryApp`.`Inventory` (`user_id` ASC) VISIBLE;
-CREATE INDEX `idx_inventory_location_id` ON `GroceryApp`.`Inventory` (`location_id` ASC) VISIBLE;
 
 -- -----------------------------------------------------
 -- Table `GroceryApp`.`Ingredients`
@@ -308,86 +282,86 @@ VALUES
 ('Beef Stew', 'https://www.allrecipes.com/recipe/14685/beef-stew/'),
 ('Pork Chops', 'https://www.allrecipes.com/recipe/16271/pork-chops/'),
 ('Salmon Fillet', 'https://www.allrecipes.com/recipe/147312/salmon-fillets/'),
-('Tuna Salad', 'https://www.allrecipes.com/recipe/220751/egg-salad/'),
+('Tuna Salad', 'https://www.allrecipes.com/recipe/220751/tuna-salad/'),
 ('Cucumber Salad', 'https://www.allrecipes.com/recipe/14103/spinach-salad/'),
-('Bell Pepper Stir-Fry', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Zucchini Noodles', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
+('Bell Pepper Stir-Fry', 'https://www.allrecipes.com/recipe/16468/bell-pepper-stir-fry/'),
+('Zucchini Noodles', 'https://www.allrecipes.com/recipe/229960/zucchini-noodles/'),
 ('Sweet Potato Fries', 'https://www.allrecipes.com/recipe/223042/sweet-potato-fries/'),
-('Avocado Toast', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Strawberry Shortcake', 'https://www.allrecipes.com/recipe/17481/carrot-cake-iii/'),
-('Blueberry Muffins', 'https://www.allrecipes.com/recipe/20144/banana-banana-bread/'),
-('Peach Cobbler', 'https://www.allrecipes.com/recipe/20144/banana-banana-bread/'),
-('Grapes Salad', 'https://www.allrecipes.com/recipe/14103/spinach-salad/'),
-('Pineapple Upside-Down Cake', 'https://www.allrecipes.com/recipe/12682/apple-pie-by-grandma-ople/'),
-('Mango Salsa', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Papaya Salad', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Melon Salad', 'https://www.allrecipes.com/recipe/14103/spinach-salad/'),
-('Lemon Bars', 'https://www.allrecipes.com/recipe/12682/apple-pie-by-grandma-ople/'),
-('Orange Chicken', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Coconut Shrimp', 'https://www.allrecipes.com/recipe/147312/salmon-fillets/'),
-('Kiwi Sorbet', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Plum Sauce', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Cherries Jubilee', 'https://www.allrecipes.com/recipe/17481/carrot-cake-iii/'),
-('Raspberry Jam', 'https://www.allrecipes.com/recipe/14103/spinach-salad/'),
-('Blackberry Cobbler', 'https://www.allrecipes.com/recipe/12682/apple-pie-by-grandma-ople/'),
-('Gingerbread Cookies', 'https://www.allrecipes.com/recipe/17481/carrot-cake-iii/'),
-('Cinnamon Rolls', 'https://www.allrecipes.com/recipe/20144/banana-banana-bread/'),
-('Turmeric Rice', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Nutmeg Cake', 'https://www.allrecipes.com/recipe/12682/apple-pie-by-grandma-ople/'),
-('Chili Powder Chicken', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Cumin Lamb', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Paprika Potatoes', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Oregano Chicken', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Basil Pesto', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Thyme Roasted Chicken', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Rosemary Lamb', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Parsley Potatoes', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Sage Stuffing', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Dill Pickles', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Bay Leaves Soup', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Mint Tea', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Chives Butter', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Coriander Chutney', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Fennel Salad', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Almond Milkshake', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Walnut Brownies', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Pistachio Ice Cream', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Cashew Butter', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Peanut Butter', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Hazelnut Cake', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Chia Pudding', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Flax Seed Smoothie', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Pumpkin Seed Butter', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Sunflower Seed Granola', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Sesame Seed Snack', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Quinoa Salad', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Barley Soup', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Buckwheat Pancakes', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Millet Porridge', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Farro Salad', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Oats Porridge', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Chickpea Curry', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Lentil Soup', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Black Bean Tacos', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Kidney Bean Chili', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Pea Soup', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Edamame Salad', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Soybean Stir Fry', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Tofu Stir Fry', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Tempeh Tacos', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Seitan Roast', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Mushroom Risotto', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Soy Milk Latte', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Almond Milk Latte', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Coconut Milk Smoothie', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Rice Milk Pudding', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Butter Chicken', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Olive Oil Dressing', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Coconut Oil Cake', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Vegetable Oil Fries', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Canola Oil Bread', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Avocado Oil Salad', 'https://www.allrecipes.com/recipe/229960/fried-rice/'),
-('Sunflower Oil Cake', 'https://www.allrecipes.com/recipe/229960/fried-rice/');
+('Avocado Toast', 'https://www.allrecipes.com/recipe/229960/avocado-toast/'),
+('Strawberry Shortcake', 'https://www.allrecipes.com/recipe/17481/strawberry-shortcake/'),
+('Blueberry Muffins', 'https://www.allrecipes.com/recipe/20144/blueberry-muffins/'),
+('Peach Cobbler', 'https://www.allrecipes.com/recipe/20144/peach-cobbler/'),
+('Grapes Salad', 'https://www.allrecipes.com/recipe/14103/grape-salad/'),
+('Pineapple Upside-Down Cake', 'https://www.allrecipes.com/recipe/12682/pineapple-upside-down-cake/'),
+('Mango Salsa', 'https://www.allrecipes.com/recipe/229960/mango-salsa/'),
+('Papaya Salad', 'https://www.allrecipes.com/recipe/229960/papaya-salad/'),
+('Melon Salad', 'https://www.allrecipes.com/recipe/14103/melon-salad/'),
+('Lemon Bars', 'https://www.allrecipes.com/recipe/12682/lemon-bars/'),
+('Orange Chicken', 'https://www.allrecipes.com/recipe/229960/orange-chicken/'),
+('Coconut Shrimp', 'https://www.allrecipes.com/recipe/147312/coconut-shrimp/'),
+('Kiwi Sorbet', 'https://www.allrecipes.com/recipe/229960/kiwi-sorbet/'),
+('Plum Sauce', 'https://www.allrecipes.com/recipe/229960/plum-sauce/'),
+('Cherries Jubilee', 'https://www.allrecipes.com/recipe/17481/cherries-jubilee/'),
+('Raspberry Jam', 'https://www.allrecipes.com/recipe/14103/raspberry-jam/'),
+('Blackberry Cobbler', 'https://www.allrecipes.com/recipe/12682/blackberry-cobbler/'),
+('Gingerbread Cookies', 'https://www.allrecipes.com/recipe/17481/gingerbread-cookies/'),
+('Cinnamon Rolls', 'https://www.allrecipes.com/recipe/9704/cinnamon-rolls/'),
+('Turmeric Rice', 'https://www.allrecipes.com/recipe/229960/turmeric-rice/'),
+('Nutmeg Cake', 'https://www.allrecipes.com/recipe/12682/nutmeg-cake/'),
+('Chili Powder Chicken', 'https://www.allrecipes.com/recipe/229960/chili-powder-chicken/'),
+('Cumin Lamb', 'https://www.allrecipes.com/recipe/229960/cumin-lamb/'),
+('Paprika Potatoes', 'https://www.allrecipes.com/recipe/229960/paprika-potatoes/'),
+('Oregano Chicken', 'https://www.allrecipes.com/recipe/229960/oregano-chicken/'),
+('Basil Pesto', 'https://www.allrecipes.com/recipe/229960/basil-pesto/'),
+('Thyme Roasted Chicken', 'https://www.allrecipes.com/recipe/229960/thyme-roasted-chicken/'),
+('Rosemary Lamb', 'https://www.allrecipes.com/recipe/229960/rosemary-lamb/'),
+('Parsley Potatoes', 'https://www.allrecipes.com/recipe/13351/parsley-potatoes/'),
+('Sage Stuffing', 'https://www.allrecipes.com/recipe/229960/sage-stuffing/'),
+('Dill Pickles', 'https://www.allrecipes.com/recipe/14349/dill-pickles/'),
+('Bay Leaves Soup', 'https://www.allrecipes.com/recipe/24713/bay-leaves-soup/'),
+('Mint Tea', 'https://www.allrecipes.com/recipe/229960/mint-tea/'),
+('Chives Butter', 'https://www.allrecipes.com/recipe/229960/chives-butter/'),
+('Coriander Chutney', 'https://www.allrecipes.com/recipe/229960/coriander-chutney/'),
+('Fennel Salad', 'https://www.allrecipes.com/recipe/229960/fennel-salad/'),
+('Almond Milkshake', 'https://www.allrecipes.com/recipe/229960/almond-milkshake/'),
+('Walnut Brownies', 'https://www.allrecipes.com/recipe/229960/walnut-brownies/'),
+('Pistachio Ice Cream', 'https://www.allrecipes.com/recipe/19209/pistachio-ice-cream/'),
+('Cashew Butter', 'https://www.allrecipes.com/recipe/229960/cashew-butter/'),
+('Peanut Butter', 'https://www.allrecipes.com/recipe/229960/peanut-butter/'),
+('Hazelnut Cake', 'https://www.allrecipes.com/recipe/229960/hazelnut-cake/'),
+('Chia Pudding', 'https://www.allrecipes.com/recipe/229960/chia-pudding/'),
+('Flax Seed Smoothie', 'https://www.allrecipes.com/recipe/229960/flax-seed-smoothie/'),
+('Pumpkin Seed Butter', 'https://www.allrecipes.com/recipe/229960/pumpkin-seed-butter/'),
+('Sunflower Seed Granola', 'https://www.allrecipes.com/recipe/229960/sunflower-seed-granola/'),
+('Sesame Seed Snack', 'https://www.allrecipes.com/recipe/229960/sesame-seed-snack/'),
+('Quinoa Salad', 'https://www.allrecipes.com/recipe/229960/quinoa-salad/'),
+('Barley Soup', 'https://www.allrecipes.com/recipe/16017/barley-soup/'),
+('Buckwheat Pancakes', 'https://www.allrecipes.com/recipe/22883/buckwheat-pancakes/'),
+('Millet Porridge', 'https://www.allrecipes.com/recipe/26788/millet-porridge/'),
+('Farro Salad', 'https://www.allrecipes.com/recipe/245688/farro-salad/'),
+('Oats Porridge', 'https://www.allrecipes.com/recipe/23447/oats-porridge/'),
+('Chickpea Curry', 'https://www.allrecipes.com/recipe/26106/chickpea-curry/'),
+('Lentil Soup', 'https://www.allrecipes.com/recipe/158140/lentil-soup/'),
+('Black Bean Tacos', 'https://www.allrecipes.com/recipe/229960/black-bean-tacos/'),
+('Kidney Bean Chili', 'https://www.allrecipes.com/recipe/229960/kidney-bean-chili/'),
+('Pea Soup', 'https://www.allrecipes.com/recipe/15459/pea-soup/'),
+('Edamame Salad', 'https://www.allrecipes.com/recipe/229960/edamame-salad/'),
+('Soybean Stir Fry', 'https://www.allrecipes.com/recipe/229960/soybean-stir-fry/'),
+('Tofu Stir Fry', 'https://www.allrecipes.com/recipe/229960/tofu-stir-fry/'),
+('Tempeh Tacos', 'https://www.allrecipes.com/recipe/229960/tempeh-tacos/'),
+('Seitan Roast', 'https://www.allrecipes.com/recipe/229960/seitan-roast/'),
+('Mushroom Risotto', 'https://www.allrecipes.com/recipe/229960/mushroom-risotto/'),
+('Soy Milk Latte', 'https://www.allrecipes.com/recipe/229960/soy-milk-latte/'),
+('Almond Milk Latte', 'https://www.allrecipes.com/recipe/229960/almond-milk-latte/'),
+('Coconut Milk Smoothie', 'https://www.allrecipes.com/recipe/229960/coconut-milk-smoothie/'),
+('Rice Milk Pudding', 'https://www.allrecipes.com/recipe/229960/rice-milk-pudding/'),
+('Butter Chicken', 'https://www.allrecipes.com/recipe/22518/butter-chicken/'),
+('Olive Oil Dressing', 'https://www.allrecipes.com/recipe/13455/olive-oil-dressing/'),
+('Coconut Oil Cake', 'https://www.allrecipes.com/recipe/240269/coconut-oil-cake/'),
+('Vegetable Oil Fries', 'https://www.allrecipes.com/recipe/24835/vegetable-oil-fries/'),
+('Canola Oil Bread', 'https://www.allrecipes.com/recipe/23447/canola-oil-bread/'),
+('Avocado Oil Salad', 'https://www.allrecipes.com/recipe/26946/avocado-oil-salad/'),
+('Sunflower Oil Cake', 'https://www.allrecipes.com/recipe/229960/sunflower-oil-cake/')
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
