@@ -544,7 +544,6 @@ def add_grocery():
     {
         "food_id": int,
         "quantity": int,
-        'location_id: int,
         'expiration_date: date,
         'date_purchase': date,
         'status': ENUM('fresh', 'used', 'spoiled') default fresh
@@ -555,12 +554,11 @@ def add_grocery():
         400 Bad Request: Invalid request body.
         404 Not Found: User not found.
         404: food_id not found.
-        404: location_id not found.
         500 Internal Server Error: Database error.
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['food_id', 'quantity', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
+    if not content_is_valid(content, ['food_id', 'quantity', 'expiration_date', 'date_purchase', 'status', 'category']):
         return jsonify(CONTENT_NOT_VALID), 400
     
     try:
@@ -583,21 +581,13 @@ def add_grocery():
         if not user:
             conn.close()
             return jsonify({"Error": "Food ID not found"}), 404
-            
-        # Check if location id exists
-        user_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(user_query, (content['location_id'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "Location ID not found"}), 404
     
         # Insert new grocery item
         insert_query = """
-            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, location_id, expiration_date, date_purchase, status, category)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, expiration_date, date_purchase, status, category)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['location_id'], content['expiration_date'], content['date_purchase'], content['status'], content['category']))
+        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['expiration_date'], content['date_purchase'], content['status'], content['category']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Grocery item created successfully"}), 201
@@ -619,7 +609,6 @@ def update_grocery():
         'inventory_id': int,
         "food_id": int,
         "quantity": int,
-        "location_id": int,
         "expiration_date": date,
         "date_purchase": date,
         "status": ENUM('fresh', 'used', 'spoiled'),
@@ -629,12 +618,12 @@ def update_grocery():
     Returns:
         200 OK: Grocery item updated successfully.
         400 Bad Request: Invalid request body.
-        404 Not Found: Inventory item or associated user/food/location not found.
+        404 Not Found: Inventory item or associated user/food not found.
         500 Internal Server Error: Database error.
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['inventory_id', 'food_id', 'quantity', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
+    if not content_is_valid(content, ['inventory_id', 'food_id', 'quantity', 'expiration_date', 'date_purchase', 'status', 'category']):
         return jsonify(CONTENT_NOT_VALID), 400
     
     try:
@@ -667,24 +656,16 @@ def update_grocery():
             conn.close()
             return jsonify({"Error": "Food ID not found"}), 404
 
-        # Check if the location exists
-        location_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(location_query, (content['location_id'],))
-        location = cursor.fetchone()
-        if not location:
-            conn.close()
-            return jsonify({"Error": "Location ID not found"}), 404
-
         # Update the grocery item
         update_query = """
             UPDATE GroceryApp.Inventory
-            SET food_id = %s, quantity = %s, user_id = %s, location_id = %s, expiration_date = %s, date_purchase = %s, status = %s, category = %s
+            SET food_id = %s, quantity = %s, user_id = %s, expiration_date = %s, date_purchase = %s, status = %s, category = %s
             WHERE inventory_id = %s
         """
         cursor.execute(update_query, (
             content['food_id'], content['quantity'], user_id, 
-            content['location_id'], content['expiration_date'], content['date_purchase'], 
-            content['status'], content['category'], inventory_id
+            content['expiration_date'], content['date_purchase'], 
+            content['status'], content['category'], content['inventory_id']
         ))
         
         conn.commit()
@@ -697,8 +678,8 @@ def update_grocery():
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/groceries', methods=['DELETE'])
-def delete_grocery():
+@app.route('/api/<int:grocery_id>', methods=['DELETE'])
+def delete_grocery(grocery_id):
     """
     Deletes a specific grocery item from GroceryApp.Inventory.
     
@@ -886,198 +867,6 @@ def delete_food_item(food_name):
     except Exception as e:
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
-        
-        
-##############################
-# GET, POST, DELETE Location #
-##############################
-@app.route('/api/<location_name>', methods=['GET'])
-def get_location(location_name):
-    """
-    Returns information for location.
-   
-    location name is passed in URL
-   
-    Returns:
-        200 if location information successfully returned
-        404 if location or user not found
-        500 Internal Server Error: Database error.
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-
-        # Check if the user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']  # Store the user ID
-        
-        query = """
-            SELECT location_id, location_name
-            FROM GroceryApp.Locations
-            WHERE location_name = %s AND user_id = %s
-        """
-        cursor.execute(query, (location_name, user_id))  # Comma after username makes it a tuple
-
-        # Check if location exists
-        results = cursor.fetchall()
-        if not results:
-            conn.close()
-            return jsonify({"Error": "No location with that name exists"}), 404
-
-        conn.close()
-        return jsonify(results), 200
-
-    except mysql.connector.Error as err:
-        # Database error
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        # General error
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
-
-@app.route('/api/locations', methods=['GET'])
-def get_locations():
-    """
-    Returns all location information for the current user.
-    
-    Returns:
-        200 if location information successfully returned
-        404 if user not found
-        500 Internal Server Error: Database error.
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Check if user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']
-
-        query = """
-            SELECT location_id, location_name
-            FROM GroceryApp.Locations
-            WHERE user_id = %s
-        """
-        cursor.execute(query, (user_id,))
-
-        results = cursor.fetchall()
-        conn.close()
-        return jsonify(results), 200
-
-    except mysql.connector.Error as err:
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
-
-@app.route('/api/location', methods=['POST'])
-def add_location():
-    """
-    Create a new location
-
-    user_id taken from username in session
-    
-    Request Body:
-    {
-        "location_name": "string",
-    }
-    Returns:
-        201 Created: New location created successfully.
-        400 Bad Request: Invalid request body.
-        500 Internal Server Error: Database error.
-    """
-    data = request.get_json()
-    if not content_is_valid(data, ['location_name']):
-        return jsonify(CONTENT_NOT_VALID), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Check if user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']
-        
-        insert_query = """
-            INSERT INTO GroceryApp.Locations (location_name, user_id)
-            VALUES (%s, %s)
-        """
-        cursor.execute(insert_query, (data['location_name'], user_id))
-        conn.commit()
-        conn.close()
-        return jsonify({"Message": "Location item created successfully"}), 201
-    except mysql.connector.Error as err:
-        # Database error
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        # General error
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
-
-
-@app.route('/api/<location_name>', methods=['DELETE'])
-def delete_location(location_name):
-    """
-    Deletes a location item from GroceryApp.Locations.
-
-    location item name is passed in URL
-
-    Returns:
-        200 if successful
-        404 if location not found
-        500 Internal Server error or database error
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Check if user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']
-
-        user_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_name = %s AND user_id = %s"
-        cursor.execute(user_query, (location_name, user_id))
-        location = cursor.fetchone()
-        if not location:
-            conn.close()
-            return jsonify({"Error": "Location not found"}), 404
-
-        # Delete records from related table (e.g., Inventory)
-        delete_query_inventory = "DELETE FROM GroceryApp.Inventory WHERE location_id = %s"
-        cursor.execute(delete_query_inventory, (location['location_id'],))
-
-        # Delete records from Locations
-        delete_query = "DELETE FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(delete_query, (location['location_id'],))
-
-        conn.commit()
-        conn.close()
-        return jsonify({"Message": "Location deleted successfully"}), 200
-
-    except mysql.connector.Error as err:
-        # Database error
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        # General error
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
 ##################################
@@ -1169,7 +958,6 @@ def delete_recipe(recipe_name):
 
     Returns:
         200 if successful
-        404 if location not found
         500 Internal Server error or database error
     """
     try:
@@ -1181,7 +969,7 @@ def delete_recipe(recipe_name):
         user = cursor.fetchone()
         if not user:
             conn.close()
-            return jsonify({"Error": "Location not found"}), 404
+            return jsonify({"Error": "Recipe not found"}), 404
         
         # Delete records from related table (e.g., Ingredients)
         delete_query_ingredients = "DELETE FROM GroceryApp.Ingredients WHERE recipe_id = %s"
@@ -1293,7 +1081,7 @@ def delete_ingredient(recipe_id):
 
     Returns:
         200 if successful
-        404 if location not found
+        404 if Ingredient not found
         500 Internal Server error or database error
     """
     try:
@@ -1495,13 +1283,16 @@ def daily_check():
                 af.food_name,
                 i.expiration_date,
                 u.user_id,
-                u.email
+                u.email,
+                r.recipe_url
             FROM 
                 Inventory i
             JOIN 
                 AllFoods af ON i.food_id = af.food_id
             JOIN 
                 Users u ON i.user_id = u.user_id
+            LEFT JOIN
+                Recipes r ON af.food_id = r.recipe_id
             WHERE 
                 i.expiration_date <= CURDATE() + INTERVAL 3 DAY
         """
@@ -1545,6 +1336,10 @@ def daily_check():
             for item in items:
                 expiration_date = item['expiration_date'].strftime('%Y-%m-%d')
                 body += f"- {item['food_name']} (Expires on {expiration_date})\n"
+
+                if item['recipe_url']:
+                    body += f"  Recipe: {item['recipe_url']}\n"
+
             body += '\nPlease consider using them soon to avoid waste.\n\nBest regards,\nYour Grocery App Team'
 
             message.attach(MIMEText(body, 'plain'))
@@ -1568,13 +1363,12 @@ def serve_vue(path):
         return send_from_directory('static', path)
     return send_from_directory('static', 'index.html')
 
-
 if __name__ == '__main__':
     # Initialize the database connection
     conn = get_db_connection()
 
     # Specify the path to the groceryapp.sql file
-    sql_file_path = '../database/groceryapp.sql'  # Adjust this path as needed
+    sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
 
     # Call the function to execute the SQL file
     execute_sql_file(conn, sql_file_path)
