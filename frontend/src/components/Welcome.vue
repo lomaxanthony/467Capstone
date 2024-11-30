@@ -11,41 +11,54 @@
       <li>🧮 Get stats on food item usage</li>
     </ul>
 
-    <button @click="goToGroceryList" class="btn1 get-started">
-      Get Started
-    </button>
+    <div class="button-container">
+      <button @click="goToGroceryList" class="btn get-started">
+        Get Started
+      </button>
 
-    <button @click="goToProfile" class="btn2 get-started">
-      Profile Page
-    </button>
+      <button @click="goToProfile" class="btn get-started">
+        Profile Page
+      </button>
+
+      <button @click="toggleSignupForm" class="btn get-started">
+        {{ showSignupForm ? '' : ' Sign Up' }}
+      </button>
+    </div>
+
+    <!-- Popup form to sign up -->
+    <div v-if="showSignupForm" class="popup-overlay" @click="toggleSignupForm">
+      <div class="popup-content" @click.stop>
+        <CreateProfile @close="toggleSignupForm" />
+      </div>
+    </div>  
+
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import CreateProfile from '../components/CreateProfile.vue';
 
-export default {
-  setup() {
-    const router = useRouter();
+const router = useRouter();
+const showSignupForm = ref(false);
 
-    const goToGroceryList = () => {
-      router.push('/add');
-    };
+const goToGroceryList = () => {
+  router.push('/add');
+};
 
-    const goToProfile = () => {
-      router.push({ name: 'profile' });
-    };
+const goToProfile = () => {
+  router.push({ name: 'profile' });
+};
 
-    return {
-      goToGroceryList,
-      goToProfile
-    };
-  }
+const toggleSignupForm = () => {
+  showSignupForm.value = !showSignupForm.value;
 };
 </script>
 
 <style scoped>
 .welcome-container {
+  background-color: var(--glacierWater);
   text-align: center;
   padding: 20px;
 }

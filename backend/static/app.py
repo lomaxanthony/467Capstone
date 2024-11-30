@@ -11,7 +11,8 @@ from db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
 
-app = Flask(__name__, static_folder='static', static_url_path='')
+
+app = Flask(__name__, static_folder='../../frontend/dist', static_url_path='')
 app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
 
 CORS(app, supports_credentials=True, resources={
@@ -24,7 +25,7 @@ CORS(app, supports_credentials=True, resources={
     }
 })    #Allow frontend to communicate with the backend
 bcrypt = Bcrypt(app) # For hashing password
-vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
+# vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
 # Ensure session cookies are correctly set
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -78,18 +79,32 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
     return True
 
 
-# Reads and executes SQL commands from groceryapp.sql
+# # Reads and executes SQL commands from groceryapp.sql
+# def execute_sql_file(connection, sql_file_path):
+#     with open(sql_file_path, 'r') as file:
+#         sql_script = file.read()  # Read the entire file as a single string
+#     cursor = connection.cursor()
+#     try:
+#         cursor.execute(sql_script, multi=True)  # Execute multiple statements at once
+#         connection.commit()
+#     except Error as e:
+#         print(f"Error executing SQL script: {e}")
+#     finally:
+#         cursor.close()
+
+
 def execute_sql_file(connection, sql_file_path):
     with open(sql_file_path, 'r') as file:
-        sql_script = file.read()  # Read the entire file as a single string
+        sql_commands = file.read().split(';')
+    
     cursor = connection.cursor()
-    try:
-        cursor.execute(sql_script, multi=True)  # Execute multiple statements at once
-        connection.commit()
-    except Error as e:
-        print(f"Error executing SQL script: {e}")
-    finally:
-        cursor.close()
+    for command in sql_commands:
+        if command.strip():
+            cursor.execute(command)
+            connection.commit()  # Commit after each command to ensure sync
+
+    cursor.close()
+
 
 # To establish MySQL connection
 #def get_db_connection():
@@ -235,8 +250,19 @@ def logout():
 @app.route('/api/session', methods=['GET'])
 @cross_origin(supports_credentials=True)
 def check_session():
-    print("Session Data:", session.get("username"))
-    return jsonify({"username": session.get("username")})
+    """
+    Check if the user is logged in by verifying the session.
+    Returns:
+        200 OK: User is logged in.
+        401 Unauthorized: User is not logged in.
+    """
+    try:
+        if 'username' in session:
+            return jsonify({"logged_in": True, "username": session['username']}), 200
+        else:
+            return jsonify({"logged_in": False}), 401
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
 @app.route('/api/user', methods=['GET'])
@@ -1470,21 +1496,21 @@ def get_suggestions(user_name):
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
+# Serve the Vue.js frontend
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve_vue(path):
-         # Serve Vue frontend files
-    if path != "" and os.path.exists(f"static/{path}"):
-        return send_from_directory('static', path)
-    return send_from_directory('static', 'index.html')
-
+def serve_vue_app(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     # Initialize the database connection
     conn = get_db_connection()
 
     # Specify the path to the groceryapp.sql file
-    sql_file_path = '../database/groceryapp.sql'  # Adjust this path as needed
+    sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
 
     # Call the function to execute the SQL file
     execute_sql_file(conn, sql_file_path)

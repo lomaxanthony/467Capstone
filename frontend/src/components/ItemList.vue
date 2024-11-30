@@ -1,84 +1,141 @@
+<!-- 
+ 
+The ItemList.vue component displays the scrollable list of grocery items.
+Needs a bit more work, but wanted to get the scrolling list started :)
+
+
+-->
+
+
+
 <template>
-  <div id="app">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-      <div class="container-fluid">
-        <router-link to="/" class="navbar-brand">Grocery Buddy</router-link>
-
-        <button 
-          class="navbar-toggler" 
-          type="button" 
-          data-bs-toggle="collapse" 
-          data-bs-target="#navbarNav" 
-          aria-controls="navbarNav" 
-          aria-expanded="false" 
-          aria-label="Toggle navigation"
+  <div class="scroll-wrapper">
+    <div class="scroll-container" ref="scrollContainer">
+      <ul class="horizontal-list">
+        <li 
+          v-for="item in items" 
+          :key="item.id"
+          class="list-item"
         >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <router-link to="/" class="nav-link" active-class="active">Home</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/add" class="nav-link" active-class="active">My Pantry</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/recipes" class="nav-link" active-class="active">Recipes</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/profile" class="nav-link" active-class="active">User Profile</router-link>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-
-    <main>
-      <router-view></router-view>
-    </main>
+          <div class="item-content">
+            <span class="item-name">{{ item.food_name }}</span>
+            <span class="item-type">{{ item.food_type }}</span>
+          </div>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'App',
-};
+<script setup>
+import { defineProps, ref} from 'vue';
+
+const props = defineProps({
+  items: {
+    type: Array,
+    required: true,
+  }
+});
+
 </script>
 
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/darkly/bootstrap.min.css';
+.scroll-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
 
-#app {
+.scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  padding: 20px 40px;
+  box-sizing: border-box;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.horizontal-list {
+  display: flex;
+  gap: 20px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  scroll-behavior: smooth;
+  flex-wrap: nowrap;
+}
+
+.list-item {
+  flex: 0 0 auto;
+  width: 125px;
+  max-width: calc(100% - 40px);
+  background-color: white;
+  border: 2px solid #1a365d; 
+  border-radius: 4px; 
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.item-content {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
 }
 
-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%; 
-  padding: 20px;
-  background-color: var(--mountainShadow);
+.item-name {
+  background-color: var(--glacierWater);
+  color: var(--mountainShadow);
+  font-weight: 600;
+  padding: 12px;
+  font-size: 1.1em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  letter-spacing: 0.5px;
 }
 
-.navbar-brand {
-  font-weight: bold;
-  font-size: 1.8rem;
-  color: var(--freshVeg);
+.quantity-box {
+  padding: 15px;
+  background-color: var(ligh);
+  border-top: 2px solid #1a365d;
 }
 
-.navbar-nav .nav-link {
-  color: var(--glacierWater);
+.item-type {
+  color: var(--mountainShadow);
+  font-size: 1em;
+  font-weight: 500;
+  display: block;
+  text-align: center;
 }
 
-.navbar-nav .nav-link.active {
-  font-weight: bold;
-  color: var(--freshVeg);
+
+@media (max-width: 640px) {
+  .scroll-container {
+    padding: 20px 30px;
+  }
+  
+  .list-item {
+    width: 180px;
+  }
+  
+  .scroll-arrow {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .arrow-icon {
+    font-size: 18px;
+  }
 }
 </style>

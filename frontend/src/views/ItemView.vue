@@ -75,7 +75,8 @@ const addItem = async (newItem) => {
 
 // Add item to list (used by AddItem component)
 const addItemToList = (newItem) => {
-  groceries.value.push(newItem);
+  console.log('Adding item to list:', newItem); // Debugging log
+  addItem(newItem);
 };
 
 // Delete items from list and persist
@@ -118,9 +119,17 @@ const toggleUploadForm = () => {
 // Fetch groceries from API to get the latest data
 const fetchGroceries = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/groceries');
+    console.log('Fetching groceries from backend'); // Debugging log
+    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
+      method: 'GET',
+      credentials: 'include',
+    });
     const data = await response.json();
-    groceries.value = data;
+    
+    // Explicitly set as an array
+    groceries.value = Array.isArray(data) ? data : [];
+    
+    console.log('Fetched groceries:', groceries.value); // Debugging log
   } catch (error) {
     console.error('Failed to fetch groceries:', error);
   }
@@ -129,9 +138,10 @@ const fetchGroceries = async () => {
 // Check if user is logged in
 const checkLogin = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/check_login', {
+    console.log('Checking login status'); // Debugging log
+    const response = await fetch('http://127.0.0.1:5000/api/session', {
       method: 'GET',
-      credentials: 'include', // Include credentials (cookies) in the request
+      credentials: 'include',
     });
     const data = await response.json();
     isLoggedIn.value = data.logged_in;
@@ -143,9 +153,11 @@ const checkLogin = async () => {
   }
 };
 
-
 onMounted(async () => { 
-  await fetchGroceries();
+  await checkLogin(); 
+  if (isLoggedIn.value) {
+    await fetchGroceries();
+  }
 });
 </script>
 
