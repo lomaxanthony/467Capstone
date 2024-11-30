@@ -10,6 +10,13 @@ import json
 from db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from collections import defaultdict
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
@@ -1469,6 +1476,89 @@ def get_suggestions(user_name):
     except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+################################################################################
+# Checks daily for upcoming expiring food items and sends user a notification  #
+################################################################################
+@app.route('/api/daily-check', methods=['POST'])
+def daily_check():
+    """
+    Performs a daily check for expiring grocery items.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Query the database for expiring items
+        query = """
+            SELECT 
+                i.inventory_id,
+                af.food_name,
+                i.expiration_date,
+                u.user_id,
+                u.email
+            FROM 
+                Inventory i
+            JOIN 
+                AllFoods af ON i.food_id = af.food_id
+            JOIN 
+                Users u ON i.user_id = u.user_id
+            WHERE 
+                i.expiration_date <= CURDATE() + INTERVAL 3 DAY
+        """
+        cursor.execute(query)
+
+        expiring_items = cursor.fetchall()
+
+        # Delete expired items
+        delete_query = """
+            DELETE FROM Inventory
+            WHERE expiration_date < CURDATE()
+        """
+        cursor.execute(delete_query)
+        conn.commit()
+
+        # Group expiring items by user email
+        user_items = defaultdict(list)
+        for item in expiring_items:
+            user_items[item['email']].append(item)
+
+        # SMTP server configuration using environment variables
+        smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.getenv('SMTP_PORT', 587))
+        smtp_username = os.getenv('SMTP_USERNAME')
+        smtp_password = os.getenv('SMTP_PASSWORD')
+
+        # Set up the SMTP server
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+
+        for email, items in user_items.items():
+            # Create the email message
+            message = MIMEMultipart()
+            message['From'] = smtp_username
+            message['To'] = email
+            message['Subject'] = 'Notification: Expiring Grocery Items'
+
+            # Build the email body
+            body = 'Dear User,\n\nThe following items in your inventory are expiring soon:\n\n'
+            for item in items:
+                expiration_date = item['expiration_date'].strftime('%Y-%m-%d')
+                body += f"- {item['food_name']} (Expires on {expiration_date})\n"
+            body += '\nPlease consider using them soon to avoid waste.\n\nBest regards,\nYour Grocery App Team'
+
+            message.attach(MIMEText(body, 'plain'))
+
+            # Send the email
+            server.sendmail(smtp_username, email, message.as_string())
+
+        # Close the SMTP server and database connection
+        server.quit()
+        conn.close()
+        return jsonify({"Message": "Daily check completed successfully"}), 200
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
