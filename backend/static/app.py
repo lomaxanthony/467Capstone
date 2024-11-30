@@ -86,7 +86,7 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
 
 
 # Reads and executes SQL commands from groceryapp.sql
-def execute_sql_file(connection, sql_file_path):
+"""def execute_sql_file(connection, sql_file_path):
     with open(sql_file_path, 'r') as file:
         sql_script = file.read()  # Read the entire file as a single string
     cursor = connection.cursor()
@@ -96,7 +96,7 @@ def execute_sql_file(connection, sql_file_path):
     except Error as e:
         print(f"Error executing SQL script: {e}")
     finally:
-        cursor.close()
+        cursor.close()"""
 
 # To establish MySQL connection
 #def get_db_connection():
