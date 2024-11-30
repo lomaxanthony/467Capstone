@@ -13,8 +13,8 @@
 - Install python 3
 - From a terminal in the working directory, set the following:
       ```bash
-  set GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your\service-account-file.json"
-  ```
+      set GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your\service-account-file.json"
+      ```
   In other words, set GOOGLE_APPLICATION_CREDENTIALS equal to the directory where your JSON key is stored.
 - From the same terminal in the working directory, run the following:
     ```bash
