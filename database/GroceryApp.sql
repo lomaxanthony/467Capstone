@@ -64,8 +64,6 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Recipes` (
   UNIQUE (`recipe_name`)
 );
 
-CREATE INDEX `idx_recipes_user_id` ON `GroceryApp`.`Recipes` (`user_id` ASC) VISIBLE;
-
 -- -----------------------------------------------------
 -- Table `GroceryApp`.`Inventory`
 -- -----------------------------------------------------
