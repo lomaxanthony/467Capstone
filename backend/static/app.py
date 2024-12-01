@@ -13,7 +13,7 @@ from google.cloud import vision
 
 
 app = Flask(__name__, static_folder='../../frontend/dist', static_url_path='')
-app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "default_secret_key")
 
 CORS(app, supports_credentials=True, resources={
     r"/api/*": {
@@ -25,7 +25,7 @@ CORS(app, supports_credentials=True, resources={
     }
 })    #Allow frontend to communicate with the backend
 bcrypt = Bcrypt(app) # For hashing password
-# vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
+vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
 # Ensure session cookies are correctly set
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -91,20 +91,6 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
 #         print(f"Error executing SQL script: {e}")
 #     finally:
 #         cursor.close()
-
-
-def execute_sql_file(connection, sql_file_path):
-    with open(sql_file_path, 'r') as file:
-        sql_commands = file.read().split(';')
-    
-    cursor = connection.cursor()
-    for command in sql_commands:
-        if command.strip():
-            cursor.execute(command)
-            connection.commit()  # Commit after each command to ensure sync
-
-    cursor.close()
-
 
 # To establish MySQL connection
 #def get_db_connection():
@@ -552,7 +538,6 @@ def add_grocery():
     {
         "food_id": int,
         "quantity": int,
-        'location_id: int,
         'expiration_date: date,
         'date_purchase': date,
         'status': ENUM('fresh', 'used', 'spoiled') default fresh
@@ -563,12 +548,11 @@ def add_grocery():
         400 Bad Request: Invalid request body.
         404 Not Found: User not found.
         404: food_id not found.
-        404: location_id not found.
         500 Internal Server Error: Database error.
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['food_id', 'quantity', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
+    if not content_is_valid(content, ['food_id', 'quantity', 'expiration_date', 'date_purchase']):
         return jsonify(CONTENT_NOT_VALID), 400
     
     try:
@@ -591,21 +575,13 @@ def add_grocery():
         if not user:
             conn.close()
             return jsonify({"Error": "Food ID not found"}), 404
-            
-        # Check if location id exists
-        user_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(user_query, (content['location_id'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "Location ID not found"}), 404
     
         # Insert new grocery item
         insert_query = """
-            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, location_id, expiration_date, date_purchase, status, category)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, expiration_date, date_purchase)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['location_id'], content['expiration_date'], content['date_purchase'], content['status'], content['category']))
+        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['expiration_date'], content['date_purchase']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Grocery item created successfully"}), 201
@@ -615,6 +591,7 @@ def add_grocery():
     except Exception as e:
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
+
 
 
 @app.route('/api/groceries', methods=['PUT'])
@@ -757,7 +734,7 @@ def delete_grocery():
 ########################################################
 # GET, POST, DELETE Food Item (in GroceryApp.AllFoods) #
 ########################################################
-@app.route('/api/<food_item>', methods=['GET'])
+@app.route('/api/<food_name>', methods=['GET'])
 def get_food_item(food_name):
     """
     Returns information for specified food item.
@@ -1502,7 +1479,7 @@ if __name__ == '__main__':
     sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
 
     # Call the function to execute the SQL file
-    execute_sql_file(conn, sql_file_path)
+    # execute_sql_file(conn, sql_file_path)
 
     # Close the connection
     conn.close()
