@@ -18,8 +18,8 @@ Needs a bit more work, but wanted to get the scrolling list started :)
           class="list-item"
         >
           <div class="item-content">
-            <span class="item-name">{{ item.food_name }}</span>
-            <span class="item-type">{{ item.food_type }}</span>
+            <span class="item-name">{{ item.name }}</span>
+            <span class="item-type">{{ item.quantity }}</span>
           </div>
         </li>
       </ul>

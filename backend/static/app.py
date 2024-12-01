@@ -806,7 +806,7 @@ def get_food_item(food_name):
         cursor = conn.cursor(dictionary=True)
 
         query = """
-            SELECT food_id, food_name, expiration_days, food_type
+            SELECT food_id, food_name, expiration_days, food_type, recipe_id
             FROM GroceryApp.AllFoods
             WHERE food_name = %s
         """
@@ -1123,8 +1123,13 @@ def delete_location(location_name):
 ##################################
 # GET, POST, DELETE from Recipes #
 ##################################
-@app.route('/api/<recipe_name>', methods=['GET'])
-def get_recipe(recipe_name):
+
+""" 
+Changing this to recipe_id because that is what is stored in the database in all foods.
+It is easier to access via a users grocery list.
+ """
+@app.route('/api/<int:recipe_id>', methods=['GET'])
+def get_recipe(recipe_id):
     """
     Returns information for recipe.
    
@@ -1138,16 +1143,18 @@ def get_recipe(recipe_name):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        print('recipe_id type: ', type(recipe_id))
 
         query = """
-            SELECT recipe_id, recipe_name
+            SELECT recipe_name, recipe_url
             FROM GroceryApp.Recipes
-            WHERE recipe_name = %s
+            WHERE recipe_id = %s
         """
-        cursor.execute(query, (recipe_name,))  # Comma after username makes it a tuple
+        cursor.execute(query, (recipe_id,))  # Comma after username makes it a tuple
 
         # Check if recipe exists
         results = cursor.fetchall()
+        print('results: ', results)
         if not results:
             conn.close()
             return jsonify({"Error": "No recipe with that name exists"}), 404

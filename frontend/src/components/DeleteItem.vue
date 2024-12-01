@@ -62,7 +62,7 @@ h2 {
   padding: 10px;
   text-align: center;
   border-radius: 5px;
-  background-color: #f9f9f9; /* Super light gray background */
+  background-color: var(--glacierWater);
 }
 
 input[type="checkbox"] {
