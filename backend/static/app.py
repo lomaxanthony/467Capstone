@@ -768,7 +768,7 @@ def delete_grocery():
 ########################################################
 # GET, POST, DELETE Food Item (in GroceryApp.AllFoods) #
 ########################################################
-@app.route('/api/<food_item>', methods=['GET'])
+@app.route('/api/<food_name>', methods=['GET'])
 def get_food_item(food_name):
     """
     Returns information for specified food item.
@@ -786,7 +786,7 @@ def get_food_item(food_name):
         cursor = conn.cursor(dictionary=True)
 
         query = """
-            SELECT food_id, food_name, expiration_days, quantity, food_type, recipe_id
+            SELECT food_id, food_name, expiration_days, food_type
             FROM GroceryApp.AllFoods
             WHERE food_name = %s
         """

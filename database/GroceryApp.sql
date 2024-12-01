@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`AllFoods` (
   `food_name` VARCHAR(50) NOT NULL,
   `expiration_days` INT NOT NULL CHECK (expiration_days > 0),
   `food_type` VARCHAR(50) NOT NULL,
-  `recipe_id` INT NOT NULL,
+  `recipe_id` INT NULL,
   PRIMARY KEY (`food_id`),
   UNIQUE (`food_name`),
   CONSTRAINT `fk_allfoods_recipe_id`
