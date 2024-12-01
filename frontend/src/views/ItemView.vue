@@ -75,10 +75,12 @@ async function handleItemAdded(newItem) {
     }
     const data = await response.json();
     console.log('Received food ID:', data); // Debugging log
-    const food_id = data.food_id;
+    console.log('data.food_id: ', data.food_id); // Debugging log
+    const food_id = data[0].food_id;
 
     // Add the item to the groceries list
-    const itemWithFoodId = { ...newItem, food_id };
+    console.log('food_id; ', food_id)
+    const itemWithFoodId = { ...newItem, quantity: 3, food_id: food_id };
     addItem(itemWithFoodId);
   } catch (error) {
     console.error('Failed to fetch food ID:', error);
@@ -95,7 +97,7 @@ async function addItem(newItem) {
       headers: {
         'Content-Type': 'application/json',
       },      
-      body: JSON.stringify(newItem.food_id)
+      body: JSON.stringify(newItem)
     });
 
     if (!response.ok) {
