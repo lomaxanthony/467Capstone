@@ -2,26 +2,22 @@
   <div class="form-container">
     <h2>Add Item</h2>
     <form @submit.prevent="handleSubmit">
+
       <div class="form-group">
         <label for="food_name">Food Name</label>
         <input id="food_name" v-model="newItem.food_name" placeholder="e.g., tomatoes" required />
       </div>
+
       <div class="form-group">
-        <label for="expiration_days">Expiration Days</label>
-        <input id="expiration_days" v-model.number="newItem.expiration_days" type="number" placeholder="Expiration Days" required />
+        <label for="quantity">Quantity</label>
+        <input id="quantity" v-model.number="newItem.quantity" type="number" placeholder="Quantity" required />
       </div>
+
       <div class="form-group">
-        <label for="food_type">Food Type</label>
-        <select id="food_type" v-model="newItem.food_type" required>
-          <option value="" disabled>Select food type</option>
-          <option value="Meat">Meat</option>
-          <option value="Produce">Produce</option>
-          <option value="Dairy">Dairy</option>
-          <option value="Grains">Grains</option>
-          <option value="Snacks">Snacks</option>
-          <option value="Breads">Breads</option>
-        </select>
+        <label for="date_purchased">Date Purchased</label>
+        <input id="date_purchased" v-model="newItem.date_purchase" type="date" required />
       </div>
+
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">Add Item</button>
         <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
@@ -31,19 +27,24 @@
 </template>
 
 <script setup>
-import { ref, defineEmits } from 'vue';
+import { ref, watch, defineEmits } from 'vue';
 
 const emit = defineEmits(['item-added', 'close']);
-const newItem = ref({ food_name: '', expiration_days: 0, food_type: '' });
+const newItem = ref({ food_name: '', quantity: 0, date_purchase: '' });
 
-const handleSubmit = () => {
-  if (newItem.value.food_name.trim() && newItem.value.food_type.trim()) {
-    emit('item-added', { ...newItem.value });
-    newItem.value = { food_name: '', expiration_days: 0, food_type: '' };
-    emit('close');
-  }
+watch(newItem, (newVal) => {
+  console.log('New item:', newVal); // Debugging log
+});
+
+const handleSubmit = function() {
+  console.log('handleSubmit called'); // Debugging log
+  console.log('Emitting item-added event with:', newItem.value); // Debugging log
+  emit('item-added', newItem.value);
+  newItem.value = { food_name: '', quantity: 0, date_purchase: '' };
+  emit('close');
 };
 </script>
+
 
 <style scoped>
 .form-container {

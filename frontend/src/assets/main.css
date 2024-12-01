@@ -27,15 +27,13 @@ Took some inspiration from CS290 to make a bit of a color variable scheme that w
 
     --darkerMountainShadow: #1c1d1f;
   
-    /* --flagstickOrange: #f9bf2d;
+    --flagstickOrange: #f9bf2d;
   
     --cloudyTransparent: #dee3e78f; 
 
-    
-
     --flagRed: #D9304F;
 
-    --lightFairwayGrass: #79bb65; */
+    --lightFairwayGrass: #79bb65; 
 }
 
 /*  ----- Viewport ----- elements inherited by all remaining elements ----- */

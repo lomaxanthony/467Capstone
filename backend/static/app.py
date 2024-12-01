@@ -19,7 +19,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = Flask(__name__, static_folder='static', static_url_path='')
+
+app = Flask(__name__, static_folder='../../frontend/dist', static_url_path='')
 app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
 
 CORS(app, supports_credentials=True, resources={
@@ -32,7 +33,7 @@ CORS(app, supports_credentials=True, resources={
     }
 })    #Allow frontend to communicate with the backend
 bcrypt = Bcrypt(app) # For hashing password
-vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
+# vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
 # Ensure session cookies are correctly set
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -85,19 +86,33 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
 
     return True
 
+# # Reads and executes SQL commands from groceryapp.sql
+# def execute_sql_file(connection, sql_file_path):
+#     with open(sql_file_path, 'r') as file:
+#         sql_script = file.read()  # Read the entire file as a single string
+#     cursor = connection.cursor()
+#     try:
+#         cursor.execute(sql_script, multi=True)  # Execute multiple statements at once
+#         connection.commit()
+#     except Error as e:
+#         print(f"Error executing SQL script: {e}")
+#     finally:
+#         cursor.close()
 
-# Reads and executes SQL commands from groceryapp.sql
-"""def execute_sql_file(connection, sql_file_path):
-    with open(sql_file_path, 'r') as file:
-        sql_script = file.read()  # Read the entire file as a single string
-    cursor = connection.cursor()
-    try:
-        cursor.execute(sql_script, multi=True)  # Execute multiple statements at once
-        connection.commit()
-    except Error as e:
-        print(f"Error executing SQL script: {e}")
-    finally:
-        cursor.close()"""
+
+# def execute_sql_file(connection, sql_file_path):
+#     with open(sql_file_path, 'r') as file:
+#         sql_commands = file.read().split(';')
+    
+#     cursor = connection.cursor()
+#     for command in sql_commands:
+#         if command.strip():
+#             cursor.execute(command)
+#             connection.commit()  # Commit after each command to ensure sync
+
+#     cursor.close()
+
+
 
 # To establish MySQL connection
 #def get_db_connection():
@@ -243,8 +258,19 @@ def logout():
 @app.route('/api/session', methods=['GET'])
 @cross_origin(supports_credentials=True)
 def check_session():
-    print("Session Data:", session.get("username"))
-    return jsonify({"username": session.get("username")})
+    """
+    Check if the user is logged in by verifying the session.
+    Returns:
+        200 OK: User is logged in.
+        401 Unauthorized: User is not logged in.
+    """
+    try:
+        if 'username' in session:
+            return jsonify({"logged_in": True, "username": session['username']}), 200
+        else:
+            return jsonify({"logged_in": False}), 401
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
 @app.route('/api/user', methods=['GET'])
@@ -546,6 +572,17 @@ def calc_date(expiration_days):
     # Return expiration date in a readable format (YYYY-MM-DD)
     return expiration_date.strftime('%Y-%m-%d')
 
+def calc_date(expiration_days):
+    # Get today's date
+    today = datetime.today()
+    
+    # Calculate expiration date
+    expiration_date = today + timedelta(days=expiration_days)
+    
+    # Return expiration date in a readable format (YYYY-MM-DD)
+    return expiration_date.strftime('%Y-%m-%d')
+
+
 @app.route('/api/groceries', methods=['POST'])
 def add_grocery():
     """
@@ -567,6 +604,7 @@ def add_grocery():
         500 Internal Server Error: Database error.
     """
     
+    
     content = request.get_json()
     if not content_is_valid(content, ['food_name', 'food_id', 'quantity', 'expiration_days', 'date_purchase']):
         return jsonify(CONTENT_NOT_VALID), 400
@@ -578,13 +616,12 @@ def add_grocery():
         content['date_purchase'] = datetime.strptime(content['date_purchase'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({"Error": "Invalid date format for date_purchase"}), 400
-    
+
     """Ensure expiration_date is in date format (YYYY-MM-DD)"""
     try:
         content['expiration_date'] = datetime.strptime(content['expiration_date'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({"Error": "Invalid date format for expiration_date"}), 400
-                
     
     try:
         conn = get_db_connection()
@@ -767,12 +804,13 @@ def get_food_item(food_name):
         404 if food item not found
         500 Internal Server Error: Database error.
     """
+    print('\nThis is the food name:', food_name)
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         query = """
-            SELECT food_id, food_name, expiration_days, quantity, food_type, recipe_id
+            SELECT food_id, food_name, expiration_days, food_type
             FROM GroceryApp.AllFoods
             WHERE food_name = %s
         """
@@ -1380,13 +1418,15 @@ def daily_check():
         print(f"Error occurred: {e}")
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+# Serve the Vue.js frontend
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve_vue(path):
-         # Serve Vue frontend files
-    if path != "" and os.path.exists(f"static/{path}"):
-        return send_from_directory('static', path)
-    return send_from_directory('static', 'index.html')
+def serve_vue_app(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
+
 
 if __name__ == '__main__':
     # Initialize the database connection
@@ -1396,7 +1436,7 @@ if __name__ == '__main__':
     sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
 
     # Call the function to execute the SQL file
-    execute_sql_file(conn, sql_file_path)
+    # execute_sql_file(conn, sql_file_path)
 
     # Close the connection
     conn.close()
