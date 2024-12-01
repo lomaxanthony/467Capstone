@@ -64,8 +64,6 @@ CREATE TABLE IF NOT EXISTS `GroceryApp`.`Recipes` (
   UNIQUE (`recipe_name`)
 );
 
-CREATE INDEX `idx_recipes_user_id` ON `GroceryApp`.`Recipes` (`user_id` ASC) VISIBLE;
-
 -- -----------------------------------------------------
 -- Table `GroceryApp`.`Inventory`
 -- -----------------------------------------------------
@@ -361,7 +359,7 @@ VALUES
 ('Vegetable Oil Fries', 'https://www.allrecipes.com/recipe/24835/vegetable-oil-fries/'),
 ('Canola Oil Bread', 'https://www.allrecipes.com/recipe/23447/canola-oil-bread/'),
 ('Avocado Oil Salad', 'https://www.allrecipes.com/recipe/26946/avocado-oil-salad/'),
-('Sunflower Oil Cake', 'https://www.allrecipes.com/recipe/229960/sunflower-oil-cake/')
+('Sunflower Oil Cake', 'https://www.allrecipes.com/recipe/229960/sunflower-oil-cake/');
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
