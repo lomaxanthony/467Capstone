@@ -7,12 +7,19 @@ from mysql.connector import Error
 import os
 import sys
 import json
+from datetime import datetime, timedelta
 from db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from collections import defaultdict
+from dotenv import load_dotenv
 
+load_dotenv()
 
-app = Flask(__name__, static_folder='../../frontend/dist', static_url_path='')
+app = Flask(__name__, static_folder='static', static_url_path='')
 app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
 
 CORS(app, supports_credentials=True, resources={
@@ -25,7 +32,7 @@ CORS(app, supports_credentials=True, resources={
     }
 })    #Allow frontend to communicate with the backend
 bcrypt = Bcrypt(app) # For hashing password
-# vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
+vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
 # Ensure session cookies are correctly set
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -79,32 +86,18 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
     return True
 
 
-# # Reads and executes SQL commands from groceryapp.sql
-# def execute_sql_file(connection, sql_file_path):
-#     with open(sql_file_path, 'r') as file:
-#         sql_script = file.read()  # Read the entire file as a single string
-#     cursor = connection.cursor()
-#     try:
-#         cursor.execute(sql_script, multi=True)  # Execute multiple statements at once
-#         connection.commit()
-#     except Error as e:
-#         print(f"Error executing SQL script: {e}")
-#     finally:
-#         cursor.close()
-
-
-def execute_sql_file(connection, sql_file_path):
+# Reads and executes SQL commands from groceryapp.sql
+"""def execute_sql_file(connection, sql_file_path):
     with open(sql_file_path, 'r') as file:
-        sql_commands = file.read().split(';')
-    
+        sql_script = file.read()  # Read the entire file as a single string
     cursor = connection.cursor()
-    for command in sql_commands:
-        if command.strip():
-            cursor.execute(command)
-            connection.commit()  # Commit after each command to ensure sync
-
-    cursor.close()
-
+    try:
+        cursor.execute(sql_script, multi=True)  # Execute multiple statements at once
+        connection.commit()
+    except Error as e:
+        print(f"Error executing SQL script: {e}")
+    finally:
+        cursor.close()"""
 
 # To establish MySQL connection
 #def get_db_connection():
@@ -543,6 +536,15 @@ def get_groceries():
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+def calc_date(expiration_days):
+    # Get today's date
+    today = datetime.today()
+    
+    # Calculate expiration date
+    expiration_date = today + timedelta(days=expiration_days)
+    
+    # Return expiration date in a readable format (YYYY-MM-DD)
+    return expiration_date.strftime('%Y-%m-%d')
 
 @app.route('/api/groceries', methods=['POST'])
 def add_grocery():
@@ -552,7 +554,6 @@ def add_grocery():
     {
         "food_id": int,
         "quantity": int,
-        'location_id: int,
         'expiration_date: date,
         'date_purchase': date,
         'status': ENUM('fresh', 'used', 'spoiled') default fresh
@@ -563,13 +564,27 @@ def add_grocery():
         400 Bad Request: Invalid request body.
         404 Not Found: User not found.
         404: food_id not found.
-        404: location_id not found.
         500 Internal Server Error: Database error.
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['food_id', 'quantity', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
+    if not content_is_valid(content, ['food_name', 'food_id', 'quantity', 'expiration_days', 'date_purchase']):
         return jsonify(CONTENT_NOT_VALID), 400
+
+    content['expiration_date'] = calc_date(content['expiration_days'])
+    del content['expiration_days']
+
+    try:
+        content['date_purchase'] = datetime.strptime(content['date_purchase'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"Error": "Invalid date format for date_purchase"}), 400
+    
+    """Ensure expiration_date is in date format (YYYY-MM-DD)"""
+    try:
+        content['expiration_date'] = datetime.strptime(content['expiration_date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"Error": "Invalid date format for expiration_date"}), 400
+                
     
     try:
         conn = get_db_connection()
@@ -591,21 +606,13 @@ def add_grocery():
         if not user:
             conn.close()
             return jsonify({"Error": "Food ID not found"}), 404
-            
-        # Check if location id exists
-        user_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(user_query, (content['location_id'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "Location ID not found"}), 404
     
         # Insert new grocery item
         insert_query = """
-            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, location_id, expiration_date, date_purchase, status, category)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, expiration_date, date_purchase)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['location_id'], content['expiration_date'], content['date_purchase'], content['status'], content['category']))
+        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['expiration_date'], content['date_purchase']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Grocery item created successfully"}), 201
@@ -627,7 +634,6 @@ def update_grocery():
         'inventory_id': int,
         "food_id": int,
         "quantity": int,
-        "location_id": int,
         "expiration_date": date,
         "date_purchase": date,
         "status": ENUM('fresh', 'used', 'spoiled'),
@@ -637,12 +643,12 @@ def update_grocery():
     Returns:
         200 OK: Grocery item updated successfully.
         400 Bad Request: Invalid request body.
-        404 Not Found: Inventory item or associated user/food/location not found.
+        404 Not Found: Inventory item or associated user/food not found.
         500 Internal Server Error: Database error.
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['inventory_id', 'food_id', 'quantity', 'location_id', 'expiration_date', 'date_purchase', 'status', 'category']):
+    if not content_is_valid(content, ['inventory_id', 'food_id', 'quantity', 'expiration_date', 'date_purchase', 'status', 'category']):
         return jsonify(CONTENT_NOT_VALID), 400
     
     try:
@@ -675,24 +681,16 @@ def update_grocery():
             conn.close()
             return jsonify({"Error": "Food ID not found"}), 404
 
-        # Check if the location exists
-        location_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(location_query, (content['location_id'],))
-        location = cursor.fetchone()
-        if not location:
-            conn.close()
-            return jsonify({"Error": "Location ID not found"}), 404
-
         # Update the grocery item
         update_query = """
             UPDATE GroceryApp.Inventory
-            SET food_id = %s, quantity = %s, user_id = %s, location_id = %s, expiration_date = %s, date_purchase = %s, status = %s, category = %s
+            SET food_id = %s, quantity = %s, user_id = %s, expiration_date = %s, date_purchase = %s, status = %s, category = %s
             WHERE inventory_id = %s
         """
         cursor.execute(update_query, (
             content['food_id'], content['quantity'], user_id, 
-            content['location_id'], content['expiration_date'], content['date_purchase'], 
-            content['status'], content['category'], inventory_id
+            content['expiration_date'], content['date_purchase'], 
+            content['status'], content['category'], content['inventory_id']
         ))
         
         conn.commit()
@@ -705,8 +703,8 @@ def update_grocery():
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/groceries', methods=['DELETE'])
-def delete_grocery():
+@app.route('/api/<int:grocery_id>', methods=['DELETE'])
+def delete_grocery(grocery_id):
     """
     Deletes a specific grocery item from GroceryApp.Inventory.
     
@@ -757,7 +755,7 @@ def delete_grocery():
 ########################################################
 # GET, POST, DELETE Food Item (in GroceryApp.AllFoods) #
 ########################################################
-@app.route('/api/<food_item>', methods=['GET'])
+@app.route('/api/<food_name>', methods=['GET'])
 def get_food_item(food_name):
     """
     Returns information for specified food item.
@@ -894,198 +892,6 @@ def delete_food_item(food_name):
     except Exception as e:
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
-        
-        
-##############################
-# GET, POST, DELETE Location #
-##############################
-@app.route('/api/<location_name>', methods=['GET'])
-def get_location(location_name):
-    """
-    Returns information for location.
-   
-    location name is passed in URL
-   
-    Returns:
-        200 if location information successfully returned
-        404 if location or user not found
-        500 Internal Server Error: Database error.
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-
-        # Check if the user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']  # Store the user ID
-        
-        query = """
-            SELECT location_id, location_name
-            FROM GroceryApp.Locations
-            WHERE location_name = %s AND user_id = %s
-        """
-        cursor.execute(query, (location_name, user_id))  # Comma after username makes it a tuple
-
-        # Check if location exists
-        results = cursor.fetchall()
-        if not results:
-            conn.close()
-            return jsonify({"Error": "No location with that name exists"}), 404
-
-        conn.close()
-        return jsonify(results), 200
-
-    except mysql.connector.Error as err:
-        # Database error
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        # General error
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
-
-@app.route('/api/locations', methods=['GET'])
-def get_locations():
-    """
-    Returns all location information for the current user.
-    
-    Returns:
-        200 if location information successfully returned
-        404 if user not found
-        500 Internal Server Error: Database error.
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Check if user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']
-
-        query = """
-            SELECT location_id, location_name
-            FROM GroceryApp.Locations
-            WHERE user_id = %s
-        """
-        cursor.execute(query, (user_id,))
-
-        results = cursor.fetchall()
-        conn.close()
-        return jsonify(results), 200
-
-    except mysql.connector.Error as err:
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
-
-@app.route('/api/location', methods=['POST'])
-def add_location():
-    """
-    Create a new location
-
-    user_id taken from username in session
-    
-    Request Body:
-    {
-        "location_name": "string",
-    }
-    Returns:
-        201 Created: New location created successfully.
-        400 Bad Request: Invalid request body.
-        500 Internal Server Error: Database error.
-    """
-    data = request.get_json()
-    if not content_is_valid(data, ['location_name']):
-        return jsonify(CONTENT_NOT_VALID), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Check if user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']
-        
-        insert_query = """
-            INSERT INTO GroceryApp.Locations (location_name, user_id)
-            VALUES (%s, %s)
-        """
-        cursor.execute(insert_query, (data['location_name'], user_id))
-        conn.commit()
-        conn.close()
-        return jsonify({"Message": "Location item created successfully"}), 201
-    except mysql.connector.Error as err:
-        # Database error
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        # General error
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
-
-
-@app.route('/api/<location_name>', methods=['DELETE'])
-def delete_location(location_name):
-    """
-    Deletes a location item from GroceryApp.Locations.
-
-    location item name is passed in URL
-
-    Returns:
-        200 if successful
-        404 if location not found
-        500 Internal Server error or database error
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Check if user exists
-        user_query = "SELECT user_id FROM GroceryApp.Users WHERE user_name = %s"
-        cursor.execute(user_query, (session['username'],))
-        user = cursor.fetchone()
-        if not user:
-            conn.close()
-            return jsonify({"Error": "User not found"}), 404
-        user_id = user['user_id']
-
-        user_query = "SELECT location_id FROM GroceryApp.Locations WHERE location_name = %s AND user_id = %s"
-        cursor.execute(user_query, (location_name, user_id))
-        location = cursor.fetchone()
-        if not location:
-            conn.close()
-            return jsonify({"Error": "Location not found"}), 404
-
-        # Delete records from related table (e.g., Inventory)
-        delete_query_inventory = "DELETE FROM GroceryApp.Inventory WHERE location_id = %s"
-        cursor.execute(delete_query_inventory, (location['location_id'],))
-
-        # Delete records from Locations
-        delete_query = "DELETE FROM GroceryApp.Locations WHERE location_id = %s"
-        cursor.execute(delete_query, (location['location_id'],))
-
-        conn.commit()
-        conn.close()
-        return jsonify({"Message": "Location deleted successfully"}), 200
-
-    except mysql.connector.Error as err:
-        # Database error
-        return jsonify({"Error": f"Database error: {err}"}), 500
-    except Exception as e:
-        # General error
-        return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
 ##################################
@@ -1177,7 +983,6 @@ def delete_recipe(recipe_name):
 
     Returns:
         200 if successful
-        404 if location not found
         500 Internal Server error or database error
     """
     try:
@@ -1189,7 +994,7 @@ def delete_recipe(recipe_name):
         user = cursor.fetchone()
         if not user:
             conn.close()
-            return jsonify({"Error": "Location not found"}), 404
+            return jsonify({"Error": "Recipe not found"}), 404
         
         # Delete records from related table (e.g., Ingredients)
         delete_query_ingredients = "DELETE FROM GroceryApp.Ingredients WHERE recipe_id = %s"
@@ -1301,7 +1106,7 @@ def delete_ingredient(recipe_id):
 
     Returns:
         200 if successful
-        404 if location not found
+        404 if Ingredient not found
         500 Internal Server error or database error
     """
     try:
@@ -1484,15 +1289,104 @@ def get_suggestions(user_name):
     except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+################################################################################
+# Checks daily for upcoming expiring food items and sends user a notification  #
+################################################################################
+@app.route('/api/daily-check', methods=['POST'])
+def daily_check():
+    """
+    Performs a daily check for expiring grocery items.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-# Serve the Vue.js frontend
+        # Query the database for expiring items
+        query = """
+            SELECT 
+                i.inventory_id,
+                af.food_name,
+                i.expiration_date,
+                u.user_id,
+                u.email,
+                r.recipe_url
+            FROM 
+                Inventory i
+            JOIN 
+                AllFoods af ON i.food_id = af.food_id
+            JOIN 
+                Users u ON i.user_id = u.user_id
+            LEFT JOIN
+                Recipes r ON af.food_id = r.recipe_id
+            WHERE 
+                i.expiration_date <= CURDATE() + INTERVAL 3 DAY
+        """
+        cursor.execute(query)
+
+        expiring_items = cursor.fetchall()
+
+        # Delete expired items
+        delete_query = """
+            DELETE FROM Inventory
+            WHERE expiration_date < CURDATE()
+        """
+        cursor.execute(delete_query)
+        conn.commit()
+
+        # Group expiring items by user email
+        user_items = defaultdict(list)
+        for item in expiring_items:
+            user_items[item['email']].append(item)
+
+        # SMTP server configuration using environment variables
+        smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.getenv('SMTP_PORT', 587))
+        smtp_username = os.getenv('SMTP_USERNAME')
+        smtp_password = os.getenv('SMTP_PASSWORD')
+
+        # Set up the SMTP server
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+
+        for email, items in user_items.items():
+            # Create the email message
+            message = MIMEMultipart()
+            message['From'] = smtp_username
+            message['To'] = email
+            message['Subject'] = 'Notification: Expiring Grocery Items'
+
+            # Build the email body
+            body = 'Dear User,\n\nThe following items in your inventory are expiring soon:\n\n'
+            for item in items:
+                expiration_date = item['expiration_date'].strftime('%Y-%m-%d')
+                body += f"- {item['food_name']} (Expires on {expiration_date})\n"
+
+                if item['recipe_url']:
+                    body += f"  Recipe: {item['recipe_url']}\n"
+
+            body += '\nPlease consider using them soon to avoid waste.\n\nBest regards,\nYour Grocery App Team'
+
+            message.attach(MIMEText(body, 'plain'))
+
+            # Send the email
+            server.sendmail(smtp_username, email, message.as_string())
+
+        # Close the SMTP server and database connection
+        server.quit()
+        conn.close()
+        return jsonify({"Message": "Daily check completed successfully"}), 200
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return jsonify({"Error": f"An error occurred: {e}"}), 500
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve_vue_app(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, 'index.html')
+def serve_vue(path):
+         # Serve Vue frontend files
+    if path != "" and os.path.exists(f"static/{path}"):
+        return send_from_directory('static', path)
+    return send_from_directory('static', 'index.html')
 
 if __name__ == '__main__':
     # Initialize the database connection
