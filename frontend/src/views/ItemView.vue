@@ -122,18 +122,22 @@ async function addItem(newItem) {
 // };
 
 // Delete items from list and persist
-const deleteItems = async (selectedItems) => {
+async function deleteItems(selectedItems) {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ item_ids: selectedItems })
-    });
+    console.log('Deleting items:', selectedItems); // Debugging log
+    for (const itemId of selectedItems) {
+      const response = await fetch(`http://127.0.0.1:5000/api/groceries/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to delete items from the database');
+      if (!response.ok) {
+        throw new Error(`Failed to delete item with ID ${itemId}`);
+      }
+
+      console.log(`Item with ID ${itemId} deleted successfully`); // Debugging log
     }
 
     // Remove items from local state after successful response
@@ -141,7 +145,7 @@ const deleteItems = async (selectedItems) => {
   } catch (error) {
     console.error('Failed to delete items:', error);
   }
-};
+}
 
 // Toggle Add Form
 const toggleAddForm = () => {

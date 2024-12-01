@@ -572,16 +572,6 @@ def calc_date(expiration_days):
     # Return expiration date in a readable format (YYYY-MM-DD)
     return expiration_date.strftime('%Y-%m-%d')
 
-def calc_date(expiration_days):
-    # Get today's date
-    today = datetime.today()
-    
-    # Calculate expiration date
-    expiration_date = today + timedelta(days=expiration_days)
-    
-    # Return expiration date in a readable format (YYYY-MM-DD)
-    return expiration_date.strftime('%Y-%m-%d')
-
 
 @app.route('/api/groceries', methods=['POST'])
 def add_grocery():
@@ -740,13 +730,13 @@ def update_grocery():
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/<int:grocery_id>', methods=['DELETE'])
-def delete_grocery(grocery_id):
+@app.route('/api/groceries/<int:inventory_id>', methods=['DELETE'])
+def delete_grocery(inventory_id):
     """
     Deletes a specific grocery item from GroceryApp.Inventory.
     
     username is passed in session
-    grocery_id is passed in URL parameters
+    inventory_id is passed in URL parameters
 
     Returns:
         200 if successful
@@ -766,16 +756,16 @@ def delete_grocery(grocery_id):
             return jsonify({"Error": "User not found"}), 404
 
         # Check if grocery item exists and belongs to user
-        grocery_query = "SELECT * FROM GroceryApp.Inventory WHERE user_id = %s AND grocery_id = %s"
-        cursor.execute(grocery_query, (user['user_id'], grocery_id))
+        grocery_query = "SELECT * FROM GroceryApp.Inventory WHERE user_id = %s AND inventory_id = %s"
+        cursor.execute(grocery_query, (user['user_id'], inventory_id))
         grocery = cursor.fetchone()
         if not grocery:
             conn.close()
             return jsonify({"Error": "Grocery item not found"}), 404
 
         # Delete grocery item
-        delete_query = "DELETE FROM GroceryApp.Inventory WHERE user_id = %s AND grocery_id = %s"
-        cursor.execute(delete_query, (user['user_id'], grocery_id))
+        delete_query = "DELETE FROM GroceryApp.Inventory WHERE user_id = %s AND inventory_id = %s"
+        cursor.execute(delete_query, (user['user_id'], inventory_id))
 
         conn.commit()
         conn.close()
