@@ -7,6 +7,7 @@ from mysql.connector import Error
 import os
 import sys
 import json
+from datetime import datetime, timedelta
 from db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
@@ -535,6 +536,15 @@ def get_groceries():
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
+def calc_date(expiration_days):
+    # Get today's date
+    today = datetime.today()
+    
+    # Calculate expiration date
+    expiration_date = today + timedelta(days=expiration_days)
+    
+    # Return expiration date in a readable format (YYYY-MM-DD)
+    return expiration_date.strftime('%Y-%m-%d')
 
 @app.route('/api/groceries', methods=['POST'])
 def add_grocery():
@@ -558,8 +568,23 @@ def add_grocery():
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['food_id', 'quantity', 'expiration_date', 'date_purchase']):
+    if not content_is_valid(content, ['food_name', 'food_id', 'quantity', 'expiration_days', 'date_purchase']):
         return jsonify(CONTENT_NOT_VALID), 400
+
+    content['expiration_date'] = calc_date(content['expiration_days'])
+    del content['expiration_days']
+
+    try:
+        content['date_purchase'] = datetime.strptime(content['date_purchase'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"Error": "Invalid date format for date_purchase"}), 400
+    
+    """Ensure expiration_date is in date format (YYYY-MM-DD)"""
+    try:
+        content['expiration_date'] = datetime.strptime(content['expiration_date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"Error": "Invalid date format for expiration_date"}), 400
+                
     
     try:
         conn = get_db_connection()
