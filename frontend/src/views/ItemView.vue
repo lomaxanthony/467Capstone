@@ -74,13 +74,13 @@ async function handleItemAdded(newItem) {
       throw new Error('Failed to fetch food ID');
     }
     const data = await response.json();
-    console.log('Received food ID:', data); // Debugging log
-    console.log('data.food_id: ', data.food_id); // Debugging log
     const food_id = data[0].food_id;
+    const food_exp_days = data[0].expiration_days;
 
     // Add the item to the groceries list
     console.log('food_id; ', food_id)
-    const itemWithFoodId = { ...newItem, quantity: 3, food_id: food_id };
+    console.log('food_exp_days: ', food_exp_days)
+    const itemWithFoodId = { ...newItem, quantity: 3, food_id: food_id, expiration_days: food_exp_days };
     addItem(itemWithFoodId);
   } catch (error) {
     console.error('Failed to fetch food ID:', error);

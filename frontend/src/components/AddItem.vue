@@ -15,7 +15,7 @@
 
       <div class="form-group">
         <label for="date_purchased">Date Purchased</label>
-        <input id="date_purchased" v-model="newItem.date_purchased" type="date" required />
+        <input id="date_purchased" v-model="newItem.date_purchase" type="date" required />
       </div>
 
       <div class="form-actions">
@@ -30,7 +30,7 @@
 import { ref, watch, defineEmits } from 'vue';
 
 const emit = defineEmits(['item-added', 'close']);
-const newItem = ref({ food_name: '', quantity: 0, date_purchased: '' });
+const newItem = ref({ food_name: '', quantity: 0, date_purchase: '' });
 
 watch(newItem, (newVal) => {
   console.log('New item:', newVal); // Debugging log
@@ -40,7 +40,7 @@ const handleSubmit = function() {
   console.log('handleSubmit called'); // Debugging log
   console.log('Emitting item-added event with:', newItem.value); // Debugging log
   emit('item-added', newItem.value);
-  newItem.value = { food_name: '', quantity: 0, date_purchased: '' };
+  newItem.value = { food_name: '', quantity: 0, date_purchase: '' };
   emit('close');
 };
 </script>
