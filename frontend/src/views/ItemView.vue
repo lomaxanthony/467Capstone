@@ -80,7 +80,7 @@ async function handleItemAdded(newItem) {
     // Add the item to the groceries list
     console.log('food_id; ', food_id)
     console.log('food_exp_days: ', food_exp_days)
-    const itemWithFoodId = { ...newItem, quantity: 3, food_id: food_id, expiration_days: food_exp_days };
+    const itemWithFoodId = { ...newItem, food_id: food_id, expiration_days: food_exp_days };
     addItem(itemWithFoodId);
   } catch (error) {
     console.error('Failed to fetch food ID:', error);
@@ -177,30 +177,30 @@ const toggleUploadForm = () => {
 //   }
 // };
 
-// // Check if user is logged in
-// const checkLogin = async () => {
-//   try {
-//     console.log('Checking login status'); // Debugging log
-//     const response = await fetch('http://127.0.0.1:5000/api/session', {
-//       method: 'GET',
-//       credentials: 'include',
-//     });
-//     const data = await response.json();
-//     isLoggedIn.value = data.logged_in;
-//     if (!isLoggedIn.value) {
-//       router.push('/login'); // Redirect to login page if not logged in
-//     }
-//   } catch (error) {
-//     console.error('Failed to check login status:', error);
-//   }
-// };
+// Check if user is logged in
+async function checkLogin() {
+  try {
+    console.log('Checking login status'); // Debugging log
+    const response = await fetch('http://127.0.0.1:5000/api/session', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await response.json();
+    isLoggedIn.value = data.logged_in;
+    if (!isLoggedIn.value) {
+      router.push('/login'); // Redirect to login page if not logged in
+    }
+  } catch (error) {
+    console.error('Failed to check login status:', error);
+  }
+}
 
-// onMounted(async () => { 
-//   await checkLogin(); 
-//   if (isLoggedIn.value) {
-//     await fetchGroceries();
-//   }
-// });
+onMounted(async () => { 
+  await checkLogin(); 
+  if (isLoggedIn.value) {
+    await fetchGroceries();
+  }
+});
 </script>
 
 <style scoped>

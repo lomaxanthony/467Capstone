@@ -590,13 +590,25 @@ def add_grocery():
     
     
     content = request.get_json()
+    print('content:', content)
     if not content_is_valid(content, ['food_id', 'quantity', 'expiration_days', 'date_purchase', 'food_name']):
         print('Content is not valid')
         return jsonify(CONTENT_NOT_VALID), 400
 
     content['expiration_date'] = calc_date(content['expiration_days'])
     del content['expiration_days']
-                
+
+    try:
+        content['date_purchase'] = datetime.strptime(content['date_purchase'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"Error": "Invalid date format for date_purchase"}), 400
+
+    """Ensure expiration_date is in date format (YYYY-MM-DD)"""
+    try:
+        content['expiration_date'] = datetime.strptime(content['expiration_date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"Error": "Invalid date format for expiration_date"}), 400
+
     
     try:
         conn = get_db_connection()
