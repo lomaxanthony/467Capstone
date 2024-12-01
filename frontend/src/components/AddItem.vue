@@ -27,34 +27,24 @@
 </template>
 
 <script setup>
-import { ref, defineEmits } from 'vue';
+import { ref, watch, defineEmits } from 'vue';
 
 const emit = defineEmits(['item-added', 'close']);
 const newItem = ref({ food_name: '', quantity: 0, date_purchased: '' });
 
-const handleSubmit = async () => {
-  if (newItem.value.food_name.trim()) {
-    try {
-      // Make an API call to get the food ID by name
-      console.log('Fetching food ID for:', this.newItem.value.food_name); // Debugging log
-      const response = await fetch(`http://127.0.0.1:5000/api/${newItem.value.food_name}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch food ID');
-      }
-      const data = await response.json();
-      const food_id = data.food_id;
+watch(newItem, (newVal) => {
+  console.log('New item:', newVal); // Debugging log
+});
 
-      // Emit the item-added event with the food ID
-      emit('item-added', { ...newItem.value, food_id });
-      newItem.value = { food_name: '', quantity: 0, date_purchased: '' };
-      emit('close');
-    } catch (error) {
-      console.error('Failed to fetch food ID:', error);
-    }
-  }
+const handleSubmit = function() {
+  console.log('handleSubmit called'); // Debugging log
+  console.log('Emitting item-added event with:', newItem.value); // Debugging log
+  emit('item-added', newItem.value);
+  newItem.value = { food_name: '', quantity: 0, date_purchased: '' };
+  emit('close');
 };
 </script>
+
 
 <style scoped>
 .form-container {
