@@ -3,8 +3,6 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import UserProfileView from '../views/UserProfileView.vue'
-import AddItemView from '../views/ItemView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import ItemView from '../views/ItemView.vue'
@@ -34,7 +32,7 @@ const router = createRouter({
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: UserProfileView
+      component: ProfileView
     },
     {
       path: '/login',
