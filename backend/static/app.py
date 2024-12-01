@@ -558,7 +558,7 @@ def add_grocery():
     """
     
     content = request.get_json()
-    if not content_is_valid(content, ['food_id', 'quantity', 'expiration_date', 'date_purchase', 'status', 'category']):
+    if not content_is_valid(content, ['food_id', 'quantity', 'expiration_date', 'date_purchase']):
         return jsonify(CONTENT_NOT_VALID), 400
     
     try:
@@ -584,10 +584,10 @@ def add_grocery():
     
         # Insert new grocery item
         insert_query = """
-            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, expiration_date, date_purchase, status, category)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO GroceryApp.Inventory (food_id, quantity, user_id, expiration_date, date_purchase)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['expiration_date'], content['date_purchase'], content['status'], content['category']))
+        cursor.execute(insert_query, (content['food_id'], content['quantity'], user_id, content['expiration_date'], content['date_purchase']))
         conn.commit()
         conn.close()
         return jsonify({"Message": "Grocery item created successfully"}), 201
