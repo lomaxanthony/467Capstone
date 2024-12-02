@@ -8,7 +8,7 @@ import os
 import sys
 import json
 from datetime import datetime, timedelta
-from db_config import get_db_connection
+from .db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
 import smtplib
@@ -40,7 +40,12 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_PERMANENT'] = True
 app.permanent_session_lifetime = timedelta(days=7)  
+
+session_dir = '/tmp/flask_session'
+if not os.path.exists(session_dir):
+    os.makedirs(session_dir)
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = session_dir
 Session(app)
 
 
@@ -1402,4 +1407,4 @@ if __name__ == '__main__':
     # Close the connection
     conn.close()
 
-    app.run(debug=True)
+    #app.run(debug=True)
