@@ -1271,7 +1271,7 @@ def get_suggestions(user_name):
     """
     Retrieves top 5 spoiled and used foods for the given user.
    
-    Expected: user_name passed in URL
+    Expected: user_name passed by session
        
     Returns:
         200 if successful
@@ -1309,7 +1309,7 @@ def get_suggestions(user_name):
               LIMIT 5
             )
         """
-        cursor.execute(query, (user_name, user_name))
+        cursor.execute(query, (session['username'], session['username']))
         result = cursor.fetchall()
         
         if not result:
