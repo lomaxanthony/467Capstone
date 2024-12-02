@@ -8,7 +8,7 @@ import os
 import sys
 import json
 from datetime import datetime, timedelta
-from .db_config import get_db_connection
+from db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
 import smtplib
@@ -1271,7 +1271,7 @@ def get_suggestions(user_name):
     """
     Retrieves top 5 spoiled and used foods for the given user.
    
-    Expected: user_name passed in URL
+    Expected: user_name passed by session
        
     Returns:
         200 if successful
@@ -1283,32 +1283,41 @@ def get_suggestions(user_name):
         cursor = conn.cursor(dictionary=True)
         
         query = """
-            (
-              SELECT 
-                food_id,
-                times_spoiled,
-                'spoiled' as type
-              FROM 
-                UserUsage
-              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
-              ORDER BY 
-                times_spoiled DESC
-              LIMIT 5
-            )
-            UNION ALL
-            (
-              SELECT 
-                food_id,
-                times_used,
-                'used' as type
-              FROM 
-                UserUsage
-              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
-              ORDER BY 
-                times_used DESC
-              LIMIT 5
-            )
+        (
+        SELECT 
+            UserUsage.food_id,
+            AllFoods.food_name,
+            UserUsage.times_spoiled,
+            'spoiled' as type
+        FROM 
+            UserUsage
+        JOIN 
+            AllFoods ON UserUsage.food_id = AllFoods.food_id
+        WHERE 
+            user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+        ORDER BY 
+            UserUsage.times_spoiled DESC
+        LIMIT 5
+        )
+        UNION ALL
+        (
+        SELECT 
+            UserUsage.food_id,
+            AllFoods.food_name,
+            UserUsage.times_used,
+            'used' as type
+        FROM 
+            UserUsage
+        JOIN 
+            AllFoods ON UserUsage.food_id = AllFoods.food_id
+        WHERE 
+            user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+        ORDER BY 
+            UserUsage.times_used DESC
+        LIMIT 5
+        )
         """
+
         cursor.execute(query, (user_name, user_name))
         result = cursor.fetchall()
         

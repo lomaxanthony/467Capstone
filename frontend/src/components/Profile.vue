@@ -25,7 +25,7 @@
     import { inject } from "vue";
 
     export default {
-        name: "Login",
+        name: "Profile",
         setup() {
             const state = inject("state");
             return { state }
