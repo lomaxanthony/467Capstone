@@ -1286,10 +1286,13 @@ def get_suggestions(user_name):
             (
               SELECT 
                 food_id,
+                food_name,
                 times_spoiled,
                 'spoiled' as type
               FROM 
                 UserUsage
+            JOIN 
+                AllFoods ON UserUsage.food_id = AllFoods.food_id
               WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
               ORDER BY 
                 times_spoiled DESC
@@ -1299,10 +1302,13 @@ def get_suggestions(user_name):
             (
               SELECT 
                 food_id,
+                food_name,
                 times_used,
                 'used' as type
               FROM 
                 UserUsage
+            JOIN
+                AllFoods ON UserUsage.food_id = AllFoods.food_id
               WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
               ORDER BY 
                 times_used DESC
