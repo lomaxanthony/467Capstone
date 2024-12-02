@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = Flask(__name__, static_folder='static', static_url_path='')
+app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
 app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
 
 CORS(app, supports_credentials=True, resources={
@@ -1386,13 +1386,14 @@ def daily_check():
         print(f"Error occurred: {e}")
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-@app.route('/', defaults={'path': ''})
+@app.route('/')
+def serve_frontend():
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Serve other static files
 @app.route('/<path:path>')
-def serve_vue(path):
-         # Serve Vue frontend files
-    if path != "" and os.path.exists(f"static/{path}"):
-        return send_from_directory('static', path)
-    return send_from_directory('static', 'index.html')
+def serve_static_files(path):
+    return send_from_directory(app.static_folder, path)
 
 if __name__ == '__main__':
     # Initialize the database connection
@@ -1407,4 +1408,4 @@ if __name__ == '__main__':
     # Close the connection
     conn.close()
 
-    #app.run(debug=True)
+    app.run()
