@@ -1433,13 +1433,21 @@ def serve_vue_app(path):
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
+@app.route('/')
+def serve_frontend():
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Serve other static files
+@app.route('/<path:path>')
+def serve_static_files(path):
+    return send_from_directory(app.static_folder, path)
 
 if __name__ == '__main__':
     # Initialize the database connection
     conn = get_db_connection()
 
     # Specify the path to the groceryapp.sql file
-    sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
+    #sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
 
     # Call the function to execute the SQL file
     # execute_sql_file(conn, sql_file_path)
