@@ -31,7 +31,7 @@ const recognizeItem = async () => {
     const formData = new FormData();
     formData.append('file', file.value);
 
-    const response = await fetch('http://your-api-endpoint/recognize', {
+    const response = await fetch('http://127.0.0.1:5000/api/recognize', {
       method: 'POST',
       body: formData,
     });
@@ -41,7 +41,7 @@ const recognizeItem = async () => {
     }
 
     const data = await response.json();
-    recognizedItem.value = data.recognizedItem; // Assuming the API returns { recognizedItem: 'Tomato' }
+    recognizedItem.value = data.recognizedItem; 
   } catch (error) {
     console.error('Error recognizing item:', error);
     alert('Failed to recognize item. Please try again.');
