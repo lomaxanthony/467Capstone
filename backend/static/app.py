@@ -572,16 +572,6 @@ def calc_date(expiration_days):
     # Return expiration date in a readable format (YYYY-MM-DD)
     return expiration_date.strftime('%Y-%m-%d')
 
-def calc_date(expiration_days):
-    # Get today's date
-    today = datetime.today()
-    
-    # Calculate expiration date
-    expiration_date = today + timedelta(days=expiration_days)
-    
-    # Return expiration date in a readable format (YYYY-MM-DD)
-    return expiration_date.strftime('%Y-%m-%d')
-
 
 @app.route('/api/groceries', methods=['POST'])
 def add_grocery():
@@ -740,13 +730,13 @@ def update_grocery():
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
 
-@app.route('/api/<int:grocery_id>', methods=['DELETE'])
-def delete_grocery(grocery_id):
+@app.route('/api/groceries/<int:inventory_id>', methods=['DELETE'])
+def delete_grocery(inventory_id):
     """
     Deletes a specific grocery item from GroceryApp.Inventory.
     
     username is passed in session
-    grocery_id is passed in URL parameters
+    inventory_id is passed in URL parameters
 
     Returns:
         200 if successful
@@ -766,16 +756,16 @@ def delete_grocery(grocery_id):
             return jsonify({"Error": "User not found"}), 404
 
         # Check if grocery item exists and belongs to user
-        grocery_query = "SELECT * FROM GroceryApp.Inventory WHERE user_id = %s AND grocery_id = %s"
-        cursor.execute(grocery_query, (user['user_id'], grocery_id))
+        grocery_query = "SELECT * FROM GroceryApp.Inventory WHERE user_id = %s AND inventory_id = %s"
+        cursor.execute(grocery_query, (user['user_id'], inventory_id))
         grocery = cursor.fetchone()
         if not grocery:
             conn.close()
             return jsonify({"Error": "Grocery item not found"}), 404
 
         # Delete grocery item
-        delete_query = "DELETE FROM GroceryApp.Inventory WHERE user_id = %s AND grocery_id = %s"
-        cursor.execute(delete_query, (user['user_id'], grocery_id))
+        delete_query = "DELETE FROM GroceryApp.Inventory WHERE user_id = %s AND inventory_id = %s"
+        cursor.execute(delete_query, (user['user_id'], inventory_id))
 
         conn.commit()
         conn.close()
@@ -810,7 +800,7 @@ def get_food_item(food_name):
         cursor = conn.cursor(dictionary=True)
 
         query = """
-            SELECT food_id, food_name, expiration_days, food_type
+            SELECT food_id, food_name, expiration_days, food_type, recipe_id
             FROM GroceryApp.AllFoods
             WHERE food_name = %s
         """
@@ -935,8 +925,13 @@ def delete_food_item(food_name):
 ##################################
 # GET, POST, DELETE from Recipes #
 ##################################
-@app.route('/api/<recipe_name>', methods=['GET'])
-def get_recipe(recipe_name):
+
+""" 
+Changing this to recipe_id because that is what is stored in the database in all foods.
+It is easier to access via a users grocery list.
+ """
+@app.route('/api/<int:recipe_id>', methods=['GET'])
+def get_recipe(recipe_id):
     """
     Returns information for recipe.
    
@@ -950,16 +945,18 @@ def get_recipe(recipe_name):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        print('recipe_id type: ', type(recipe_id))
 
         query = """
-            SELECT recipe_id, recipe_name
+            SELECT recipe_name, recipe_url
             FROM GroceryApp.Recipes
-            WHERE recipe_name = %s
+            WHERE recipe_id = %s
         """
-        cursor.execute(query, (recipe_name,))  # Comma after username makes it a tuple
+        cursor.execute(query, (recipe_id,))  # Comma after username makes it a tuple
 
         # Check if recipe exists
         results = cursor.fetchall()
+        print('results: ', results)
         if not results:
             conn.close()
             return jsonify({"Error": "No recipe with that name exists"}), 404

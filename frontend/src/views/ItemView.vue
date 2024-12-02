@@ -61,7 +61,7 @@ const router = useRouter();
 // });
 
 
-// Handle item-added event
+// Handle item-added event to get food ID
 async function handleItemAdded(newItem) {
   console.log('Handling item-added event with:', newItem); // Debugging log
   try {
@@ -77,7 +77,7 @@ async function handleItemAdded(newItem) {
     const food_id = data[0].food_id;
     const food_exp_days = data[0].expiration_days;
 
-    // Add the item to the groceries list
+    // Add the food ID to the new item
     console.log('food_id; ', food_id)
     console.log('food_exp_days: ', food_exp_days)
     const itemWithFoodId = { ...newItem, food_id: food_id, expiration_days: food_exp_days };
@@ -87,7 +87,7 @@ async function handleItemAdded(newItem) {
   }
 }
 
-// Add items to list and persist
+// Add the new item object above to the user's grocery SQL table
 async function addItem(newItem) {
   try {
     console.log('Sending new item to backend:', newItem); // Debugging log
@@ -121,27 +121,31 @@ async function addItem(newItem) {
 //   addItem(newItem);
 // };
 
-// // Delete items from list and persist
-// const deleteItems = async (selectedItems) => {
-//   try {
-//     const response = await fetch('http://127.0.0.1:5000/api/groceries', {
-//       method: 'DELETE',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//       body: JSON.stringify({ item_ids: selectedItems })
-//     });
+// Delete items from list and persist
+async function deleteItems(selectedItems) {
+  try {
+    console.log('Deleting items:', selectedItems); // Debugging log
+    for (const itemId of selectedItems) {
+      const response = await fetch(`http://127.0.0.1:5000/api/groceries/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-//     if (!response.ok) {
-//       throw new Error('Failed to delete items from the database');
-//     }
+      if (!response.ok) {
+        throw new Error(`Failed to delete item with ID ${itemId}`);
+      }
 
-//     // Remove items from local state after successful response
-//     groceries.value = groceries.value.filter(item => !selectedItems.includes(item.id));
-//   } catch (error) {
-//     console.error('Failed to delete items:', error);
-//   }
-// };
+      console.log(`Item with ID ${itemId} deleted successfully`); // Debugging log
+    }
+
+    // Remove items from local state after successful response
+    groceries.value = groceries.value.filter(item => !selectedItems.includes(item.id));
+  } catch (error) {
+    console.error('Failed to delete items:', error);
+  }
+}
 
 // Toggle Add Form
 const toggleAddForm = () => {
@@ -158,24 +162,24 @@ const toggleUploadForm = () => {
   showUploadForm.value = !showUploadForm.value;
 };
 
-// // Fetch groceries from API to get the latest data
-// const fetchGroceries = async () => {
-//   try {
-//     console.log('Fetching groceries from backend'); // Debugging log
-//     const response = await fetch('http://127.0.0.1:5000/api/groceries', {
-//       method: 'GET',
-//       credentials: 'include',
-//     });
-//     const data = await response.json();
+// Fetch groceries from API to get the latest data
+const fetchGroceries = async () => {
+  try {
+    console.log('Fetching groceries from backend'); // Debugging log
+    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await response.json();
     
-//     // Explicitly set as an array
-//     groceries.value = Array.isArray(data) ? data : [];
+    // Explicitly set as an array because List component expects an array
+    groceries.value = Array.isArray(data) ? data : [];
     
-//     console.log('Fetched groceries:', groceries.value); // Debugging log
-//   } catch (error) {
-//     console.error('Failed to fetch groceries:', error);
-//   }
-// };
+    console.log('Fetched groceries:', groceries.value); // Debugging log
+  } catch (error) {
+    console.error('Failed to fetch groceries:', error);
+  }
+};
 
 // Check if user is logged in
 async function checkLogin() {
@@ -209,6 +213,7 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 20px;
+  background-color: var(--MountainShadow);
 }
 
 .button-group {
