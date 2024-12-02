@@ -8,7 +8,7 @@ import os
 import sys
 import json
 from datetime import datetime, timedelta
-from db_config import get_db_connection
+from .db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
 import smtplib
@@ -41,7 +41,12 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_PERMANENT'] = True
 app.permanent_session_lifetime = timedelta(days=7)  
+
+session_dir = '/tmp/flask_session'
+if not os.path.exists(session_dir):
+    os.makedirs(session_dir)
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = session_dir
 Session(app)
 
 
@@ -649,6 +654,7 @@ def add_grocery():
     except Exception as e:
         # General error
         return jsonify({"Error": f"An error occurred: {e}"}), 500
+
 
 
 @app.route('/api/groceries', methods=['PUT'])
@@ -1424,13 +1430,21 @@ def serve_vue_app(path):
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
+@app.route('/')
+def serve_frontend():
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Serve other static files
+@app.route('/<path:path>')
+def serve_static_files(path):
+    return send_from_directory(app.static_folder, path)
 
 if __name__ == '__main__':
     # Initialize the database connection
     conn = get_db_connection()
 
     # Specify the path to the groceryapp.sql file
-    sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
+    #sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
 
     # Call the function to execute the SQL file
     # execute_sql_file(conn, sql_file_path)

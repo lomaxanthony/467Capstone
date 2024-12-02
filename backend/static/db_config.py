@@ -1,19 +1,20 @@
 import os
 import mysql.connector
 from mysql.connector import Error
-from dotenv import load_dotenv
 
-load_dotenv()
+# Load environment variables from .env file only if not running on App Engine
+if os.environ.get('GAE_ENV') != 'standard':
+    from dotenv import load_dotenv
+    load_dotenv()
 
 # Database configuration using environment variables
-# Enter in your credentials withing the .env file
 db_config = {
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'host': os.getenv('DB_HOST'),
-    'database': os.getenv('DB_NAME')
+    'user': os.environ['DB_USER'],
+    'password': os.environ['DB_PASSWORD'],
+    'host': os.environ['DB_HOST'],
+    'database': os.environ['DB_NAME'],
+    'port': int(os.environ.get('DB_PORT', 3306))
 }
-
 
 # Function to establish a database connection
 def get_db_connection():
@@ -25,4 +26,3 @@ def get_db_connection():
     except Error as txt:
         print(f"Error connecting to MySQL: {txt}")
     return None
-

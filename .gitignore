@@ -179,4 +179,8 @@ yarn-error.log
 # Pytest Unittests
 .vscode
 
+
+app.yaml
+.gcloudignore
+package-lock.json
 # End of https://www.toptal.com/developers/gitignore/api/flask,vuejs
