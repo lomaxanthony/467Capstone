@@ -1309,7 +1309,7 @@ def get_suggestions(user_name):
               LIMIT 5
             )
         """
-        cursor.execute(query, (user_name, user_name))
+        cursor.execute(query, (session['username'], session['username']))
         result = cursor.fetchall()
         
         if not result:
