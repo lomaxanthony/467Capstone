@@ -1271,7 +1271,7 @@ def get_suggestions(user_name):
     """
     Retrieves top 5 spoiled and used foods for the given user.
    
-    Expected: user_name passed in URL
+    Expected: user_name passed by session
        
     Returns:
         200 if successful
@@ -1286,10 +1286,13 @@ def get_suggestions(user_name):
             (
               SELECT 
                 food_id,
+                food_name,
                 times_spoiled,
                 'spoiled' as type
               FROM 
                 UserUsage
+            JOIN 
+                AllFoods ON UserUsage.food_id = AllFoods.food_id
               WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
               ORDER BY 
                 times_spoiled DESC
@@ -1299,17 +1302,20 @@ def get_suggestions(user_name):
             (
               SELECT 
                 food_id,
+                food_name,
                 times_used,
                 'used' as type
               FROM 
                 UserUsage
+            JOIN
+                AllFoods ON UserUsage.food_id = AllFoods.food_id
               WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
               ORDER BY 
                 times_used DESC
               LIMIT 5
             )
         """
-        cursor.execute(query, (user_name, user_name))
+        cursor.execute(query, (session['username'], session['username']))
         result = cursor.fetchall()
         
         if not result:
