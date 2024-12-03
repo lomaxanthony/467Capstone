@@ -39,7 +39,7 @@ CORS(app, supports_credentials=True, resources={
     }
 })    #Allow frontend to communicate with the backend
 bcrypt = Bcrypt(app) # For hashing password
-# vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
+vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
 # Ensure session cookies are correctly set
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -173,24 +173,57 @@ def recognize_image():
         # Get the uploaded image file
         image_file = request.files['image']
 
-        # Google vision expects image in form of bytes
+        if image_file.filename == '':
+            return jsonify({"Error": "No selected file"}), 400
+
+        # Read the image file content
         image_bytes = image_file.read()
 
-        # Create an image object for Google Vision API
+        if not image_bytes:
+            return jsonify({"Error": "Empty image file"}), 400
+
+        # Initialize the Vision API client
+        vision_client = vision.ImageAnnotatorClient()
+
+        # Create an Image object for the Vision API
         image = vision.Image(content=image_bytes)
 
-        # Use the Vision API to detect labels
-        response = vision_client.label_detection(image=image, max_results=3)
+        # Specify the features you want the API to perform
+        # For example, LABEL_DETECTION to identify objects within the image
+        features = [
+            vision.Feature(type=vision.Feature.Type.LABEL_DETECTION, max_results=10),
+            vision.Feature(type=vision.Feature.Type.OBJECT_LOCALIZATION, max_results=5)
+        ]
 
+        # Construct the request
+        request = vision.AnnotateImageRequest(image=image, features=features)
+
+        # Perform the request
+        response = vision_client.annotate_image(request=request)
+
+        # Check for errors in the response
         if response.error.message:
-            return jsonify({"Error": response.error.message}), 500
+            raise Exception(f"{response.error.message}")
 
-        # Extract labels from the response
-        labels = [label.description for label in response.label_annotations]
-        return jsonify({"recognized_items": labels}), 200
+        # Extract label annotations
+        labels = response.label_annotations
+        recognized_labels = [label.description for label in labels]
+
+        # Extract localized object annotations (optional)
+        objects = response.localized_object_annotations
+        recognized_objects = [obj.name for obj in objects]
+
+        # Combine labels and objects for response
+        recognition_results = {
+            "labels": recognized_labels,
+            "objects": recognized_objects
+        }
+
+        return jsonify({"recognized_items": recognition_results}), 200
 
     except Exception as e:
-        return jsonify({"Error": f"An error occurred in recognize_image(): {str(e)}"}), 500
+        app.logger.error(f"Error occurred in recognize_image(): {e}")
+        return jsonify({"Error": f"An error occurred in recognize_image(): {e}"}), 500
 
 #########################################
 # Login and Logout functions, both POST #
