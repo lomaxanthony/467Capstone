@@ -22,7 +22,7 @@ const user = ref(null);
 async function fetchGroceries() {
   try {
     console.log('Fetching groceries from backend'); // Debugging log
-    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
+    const response = await fetch('/api/groceries', {
       method: 'GET',
       credentials: 'include',
     });
@@ -43,7 +43,7 @@ async function fetchRecipeIds() {
   try {
     for (const grocery of groceries.value) {
       console.log('Fetching recipe id for:', grocery.name); // Debugging log
-      const response = await fetch(`http://127.0.0.1:5000/api/${grocery.name}`);
+      const response = await fetch(`/api/${grocery.name}`);
 
       if (!response.ok) {
         throw new Error('Failed to get recipe id');
@@ -64,7 +64,7 @@ async function fetchRecipeIds() {
 async function fetchRecipeDetails(recipeId, foodName) {
   try {
     console.log('Fetching recipe details for recipe ID:', recipeId); // Debugging log
-    const response = await fetch(`http://127.0.0.1:5000/api/${recipeId}`);
+    const response = await fetch(`/api/${recipeId}`);
 
     if (!response.ok) {
       throw new Error('Failed to get recipe details');

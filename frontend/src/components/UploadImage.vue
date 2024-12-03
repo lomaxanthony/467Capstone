@@ -29,9 +29,9 @@ const recognizeItem = async () => {
 
   try {
     const formData = new FormData();
-    formData.append('file', file.value);
+    formData.append('image', file.value); // Ensure the key matches the backend expectation
 
-    const response = await fetch('http://127.0.0.1:5000/api/recognize', {
+    const response = await fetch('/api/recognize', { 
       method: 'POST',
       body: formData,
     });
@@ -41,10 +41,10 @@ const recognizeItem = async () => {
     }
 
     const data = await response.json();
-    recognizedItem.value = data.recognizedItem; 
+    recognizedItem.value = data.recognized_items.join(', ');
   } catch (error) {
     console.error('Error recognizing item:', error);
-    alert('Failed to recognize item. Please try again.');
+    alert('There was an error recognizing the item. Please try again.');
   }
 };
 </script>

@@ -8,7 +8,8 @@ import os
 import sys
 import json
 from datetime import datetime, timedelta
-from .db_config import get_db_connection
+sys.path.append(os.path.dirname(__file__))  
+from db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
 import smtplib
@@ -17,17 +18,19 @@ from email.mime.multipart import MIMEMultipart
 from collections import defaultdict
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
 load_dotenv()
 
 
-app = Flask(__name__, static_folder='../../frontend/dist', static_url_path='')
-app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
+app = Flask(__name__, static_folder='static', static_url_path='')
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "N3Cr0n_$uPr3mA¢Y")
 
 CORS(app, supports_credentials=True, resources={
     r"/api/*": {
         "origins": [
-            "http://localhost:5173",
-            "https://smartgroceryapp-439520.uc.r.appspot.com"
+            "https://smartgroceryapp-439520.uc.r.appspot.com",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
@@ -45,11 +48,11 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_PERMANENT'] = True
 app.permanent_session_lifetime = timedelta(days=7)  
 
-session_dir = '/tmp/flask_session'
+session_dir = os.path.join(os.path.dirname(__file__), 'flask_session')
 if not os.path.exists(session_dir):
     os.makedirs(session_dir)
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_FILE_DIR'] = session_dir
+app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 Session(app)
 
 
@@ -1424,35 +1427,14 @@ def daily_check():
         print(f"Error occurred: {e}")
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-# Serve the Vue.js frontend
+# Serve the frontend
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve_vue_app(path):
+def serve_frontend(path):
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
-@app.route('/')
-def serve_frontend():
-    return send_from_directory(app.static_folder, 'index.html')
-
-# Serve other static files
-@app.route('/<path:path>')
-def serve_static_files(path):
-    return send_from_directory(app.static_folder, path)
-
 if __name__ == '__main__':
-    # Initialize the database connection
-    conn = get_db_connection()
-
-    # Specify the path to the groceryapp.sql file
-    #sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
-
-    # Call the function to execute the SQL file
-    # execute_sql_file(conn, sql_file_path)
-
-    # Close the connection
-    conn.close()
-
-    app.run(debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=True)

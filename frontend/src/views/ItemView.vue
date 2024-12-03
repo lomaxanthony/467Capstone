@@ -68,7 +68,7 @@ async function handleItemAdded(newItem) {
     console.log('Fetching food ID for:', newItem.food_name); // Debugging log
     console.log('newItem.food_name: ', typeof newItem.food_name); // Debugging log
     // Make an API call to get the food ID by name
-    const response = await fetch(`http://127.0.0.1:5000/api/${String(newItem.food_name)}`);
+    const response = await fetch(`/api/${String(newItem.food_name)}`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch food ID');
@@ -92,7 +92,7 @@ async function addItem(newItem) {
   try {
     console.log('Sending new item to backend:', newItem); // Debugging log
     console.log('newItem.food_id: ', newItem.food_id); // Debugging log 
-    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
+    const response = await fetch('/api/groceries', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ async function deleteItems(selectedItems) {
   try {
     console.log('Deleting items:', selectedItems); // Debugging log
     for (const itemId of selectedItems) {
-      const response = await fetch(`http://127.0.0.1:5000/api/groceries/${itemId}`, {
+      const response = await fetch(`/api/groceries/${itemId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ const toggleUploadForm = () => {
 const fetchGroceries = async () => {
   try {
     console.log('Fetching groceries from backend'); // Debugging log
-    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
+    const response = await fetch('/api/groceries', {
       method: 'GET',
       credentials: 'include',
     });
@@ -185,7 +185,7 @@ const fetchGroceries = async () => {
 async function checkLogin() {
   try {
     console.log('Checking login status'); // Debugging log
-    const response = await fetch('http://127.0.0.1:5000/api/session', {
+    const response = await fetch('/api/session', {
       method: 'GET',
       credentials: 'include',
     });

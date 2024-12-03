@@ -39,7 +39,7 @@ const showDeleteForm = ref(false);
 // Fetch groceries from the API
 const fetchGroceries = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/groceries');
+    const response = await fetch('/api/groceries');
     const data = await response.json();
     console.log('API Response:', data); 
     groceries.value = Array.isArray(data) ? data : []; 
@@ -52,7 +52,7 @@ const fetchGroceries = async () => {
 const addItemToList = async (newItem) => {
   try {
 
-    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
+    const response = await fetch('/api/groceries', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ const addItemToList = async (newItem) => {
 // Delete items from list and persist
 const deleteItems = async (selectedItems) => {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/groceries', {
+    const response = await fetch('/api/groceries', {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
