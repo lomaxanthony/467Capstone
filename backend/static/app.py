@@ -25,7 +25,10 @@ app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
 
 CORS(app, supports_credentials=True, resources={
     r"/api/*": {
-        "origins": ["http://localhost:5173"],  # Your Vue.js development server
+        "origins": [
+            "http://localhost:5173",
+            "https://smartgroceryapp-439520.uc.r.appspot.com"
+        ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "expose_headers": ["Content-Range", "X-Content-Range"],
