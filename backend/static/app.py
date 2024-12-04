@@ -36,7 +36,7 @@ CORS(app, supports_credentials=True, resources={
     }
 })    #Allow frontend to communicate with the backend
 bcrypt = Bcrypt(app) # For hashing password
-# vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
+vision_client = vision.ImageAnnotatorClient() # For image recognition via google vision
 
 # Ensure session cookies are correctly set
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -149,6 +149,74 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
     cursor.close()
     conn.close()
     print("Database initialized successfully.")"""
+"""
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = ' PUT CREDENTIALS HERE. EXAMPLE IN COMMENT BELOW '
+# '/home/neuralnine/Documents/Programming/NeuralNine/Python/Current/neuralninevisionproject-726f0feffaf9.json'
+
+def detect_labels(passed_image):
+    # Detects lables in the file
+
+    print("\nThis is type of passed_image: ", type(passed_image))
+
+    image_bytes = passed_image.read()
+
+    print("\nThis is image_bytes: ", image_bytes)
+
+    image = vision.Image(content=image_bytes)
+
+    print("\nThis is image: ", image")
+    
+    response = vision_client.label_detection(image=image, max_results=3)
+
+    print("\nThis is response: ", response)
+          
+    labels = response.label_annotations
+    print("Lables:")
+    
+    for label in lables:
+        print(label.description)
+    
+    if response.error.message:
+        raise Exception(
+            "{}\nFor more info on error messages, check: "
+            "https://cloud.google.com/apis/design/errors".format(response.error.message)
+        )
+
+    labels = [label.description for label in response.label_annotations]
+
+    return labels
+
+
+############################################################
+# Route to recognize grocery items using Google Vision API #
+############################################################
+@app.route('/api/recognize', methods=['POST'])
+def recognize_image():
+    """
+    Recognizes grocery items from an uploaded image using Google Vision API.
+    
+    Returns:
+        200 if successful with recognized labels
+        400 if the request is invalid
+        500 for internal server errors
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({"Error": "No image file provided"}), 400
+        
+        # Get the uploaded image file
+        image_file = request.files['image']
+
+        print("\nThis is image type: ", type(image_file))
+
+        three_labels = detect_labels(image_file)
+        
+        return jsonify({"recognized_items": three_labels}), 200
+
+    except Exception as e:
+        return jsonify({"Error": f"An error occurred in recognize_image(): {str(e)}"}), 500"""
+"""
+
 
 ############################################################
 # Route to recognize grocery items using Google Vision API #
