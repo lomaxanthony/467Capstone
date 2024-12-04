@@ -43,7 +43,7 @@
         methods: {
             async fetchSuggestions() {
                 try {
-                    const response = await fetch(`http://127.0.0.1:5000/api/suggestions/${this.state.user.username}`);
+                    const response = await fetch(`/api/suggestions/${this.state.user.username}`);
                     if (!response.ok) {
                         const error = await response.json();
                         throw new Error(error.Error);

@@ -57,7 +57,7 @@ app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 Session(app)
 
 # Set up Google Application Credentials
-# os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = ''
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:/OSU/2024_Fall/CS467_Capstone/GitApp/smartgroceryapp-439520-5de59c00682e.json'
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
