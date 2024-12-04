@@ -64,79 +64,54 @@ export default {
   name: "App",
   setup() {
     const state = reactive({
-      user: null,
+      user: {
+        username: null, // Initialize as null
+      },
       isLoggedIn: false,
     });
 
-    // provide state object to child components
-    provide("state", state)
+    provide("state", state);
 
     const router = useRouter();
 
-    // we want to check first if there is a current session logged in
     const fetchSessionData = async () => {
       try {
-        // fetch the session status from the /api/session endpoint
-        const sessionResponse = await fetch("/api/session", {
+        const response = await fetch("/api/session", {
           method: "GET",
           credentials: "include",
         });
 
-        if (sessionResponse.ok) {
-          const sessionData = await sessionResponse.json();
-          if (sessionData.username) {
-            // if the session contains a username, the user is logged in
+        if (response.ok) {
+          const sessionData = await response.json();
+          if (sessionData.username) { // Ensure backend sends 'username'
             state.isLoggedIn = true;
-            state.user = { user_name: sessionData.username };
-            
-            // fetch user data
-            await fetchUserData(sessionData.username);
+            state.user.username = sessionData.username; // Set username
           } else {
             state.isLoggedIn = false;
-            state.user = null;
+            state.user.username = null;
           }
         } else {
           state.isLoggedIn = false;
-          state.user = null;
+          state.user.username = null;
         }
       } catch (error) {
-        console.error("Error checking session data:", error);
+        console.error("Error fetching session data:", error);
         state.isLoggedIn = false;
-        state.user = null;
+        state.user.username = null;
       }
     };
 
-    // fetch the user data based on the username
-    const fetchUserData = async () => {
-      try {
-        const userResponse = await fetch("/api/user", {
-          method: "GET",
-          credentials: "include", 
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          state.user = userData;
-        } else {
-          console.error("Error fetching user data:", await userResponse.text());
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    // handle user log out
     const handleLogout = async () => {
       try {
         const logoutResponse = await fetch("/api/logout", {
-          method: "POST", // 
+          method: "POST",
           credentials: "include",
         });
 
         if (logoutResponse.ok) {
           state.isLoggedIn = false;
-          state.user = null;
-          router.push("/");
+          state.user.username = null;
+          router.push("/login");
         } else {
           console.error("Error logging out:", await logoutResponse.text());
         }
@@ -145,15 +120,13 @@ export default {
       }
     };
 
-    // on component mount, check session and fetch user data if logged in
     onMounted(() => {
       fetchSessionData();
     });
 
     return {
       state,
-      router,
-      handleLogout
+      handleLogout,
     };
   },
 };

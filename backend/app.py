@@ -1305,13 +1305,11 @@ def add_spoil():
 def get_suggestions(user_name):
     """
     Retrieves top 5 spoiled and used foods for the given user.
-   
-    Expected: user_name passed by session
-       
+    
     Returns:
         200 if successful
-        404 user has no instances of UserUsage
-        500 Internal Server error or database error
+        404 if no data found
+        500 on error
     """
     try:
         conn = get_db_connection()
@@ -1320,56 +1318,60 @@ def get_suggestions(user_name):
         query = """
             (
               SELECT 
-                food_id,
-                food_name,
-                times_spoiled,
+                uf.food_id,
+                af.food_name,
+                uf.times_spoiled,
                 'spoiled' as type
               FROM 
-                UserUsage
-            JOIN 
-                AllFoods ON UserUsage.food_id = AllFoods.food_id
-              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+                UserUsage uf
+              JOIN 
+                AllFoods af ON uf.food_id = af.food_id
+              WHERE uf.user_id = (SELECT user_id FROM Users WHERE user_name = %s)
               ORDER BY 
-                times_spoiled DESC
+                uf.times_spoiled DESC
               LIMIT 5
             )
             UNION ALL
             (
               SELECT 
-                food_id,
-                food_name,
-                times_used,
+                uf.food_id,
+                af.food_name,
+                uf.times_used,
                 'used' as type
               FROM 
-                UserUsage
-            JOIN
-                AllFoods ON UserUsage.food_id = AllFoods.food_id
-              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+                UserUsage uf
+              JOIN 
+                AllFoods af ON uf.food_id = af.food_id
+              WHERE uf.user_id = (SELECT user_id FROM Users WHERE user_name = %s)
               ORDER BY 
-                times_used DESC
+                uf.times_used DESC
               LIMIT 5
             )
         """
-        cursor.execute(query, (session['username'], session['username']))
-        result = cursor.fetchall()
         
-        if not result:
-            conn.close()
-            return jsonify({"Error": "No suggestions found"}), 404
+        cursor.execute(query, (user_name, user_name))
+        suggestions = cursor.fetchall()
         
-        top_spoiled = [item for item in result if item['type'] == 'spoiled'] # List comprehension
-        top_used = [item for item in result if item['type'] == 'used']
+        if not suggestions:
+            return jsonify({"Error": "No data found for user"}), 404
         
-        conn.close()
-        return jsonify({
-            "top_spoiled": top_spoiled,
-            "top_used": top_used
-        }), 200
-       
+        top_spoiled = [item for item in suggestions if item['type'] == 'spoiled']
+        top_used = [item for item in suggestions if item['type'] == 'used']
+        
+        response = {
+            'top_spoiled': top_spoiled,
+            'top_used': top_used
+        }
+        
+        return jsonify(response), 200
+
     except mysql.connector.Error as err:
         return jsonify({"Error": f"Database error: {err}"}), 500
     except Exception as e:
         return jsonify({"Error": f"An error occurred: {e}"}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 ################################################################################
 # Checks daily for upcoming expiring food items and sends user a notification  #
@@ -1466,12 +1468,10 @@ def daily_check():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+    if (path != "" and os.path.exists(os.path.join(app.static_folder, path))):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)
-
-
