@@ -17,6 +17,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from collections import defaultdict
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -55,6 +56,8 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 Session(app)
 
+# Set up Google Application Credentials
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:/OSU/2024_Fall/CS467_Capstone/GitApp/smartgroceryapp-439520-5de59c00682e.json'
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
@@ -156,74 +159,67 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
 ############################################################
 # Route to recognize grocery items using Google Vision API #
 ############################################################
+def detect_labels(image_file):
+    """
+    Detects labels in the provided image file using Google Vision API.
+
+    Args:
+        image_file (FileStorage): The uploaded image file.
+
+    Returns:
+        list: A list of labels detected in the image.
+    """
+    # Read the image file content
+    image_bytes = image_file.read()
+
+    # Create a Vision client
+    client = vision.ImageAnnotatorClient()
+
+    # Construct an Image instance
+    image = vision.Image(content=image_bytes)
+
+    # Perform label detection
+    response = client.label_detection(image=image)
+
+    if response.error.message:
+        raise Exception(
+            f"{response.error.message}\nFor more info on error messages, "
+            "check: https://cloud.google.com/apis/design/errors"
+        )
+
+    labels = [label.description for label in response.label_annotations]
+    return labels
+
 @app.route('/api/recognize', methods=['POST'])
 def recognize_image():
     """
     Recognizes grocery items from an uploaded image using Google Vision API.
-    
+
     Returns:
-        200 if successful with recognized labels
-        400 if the request is invalid
-        500 for internal server errors
+        JSON response with recognized labels.
     """
     try:
         if 'image' not in request.files:
             return jsonify({"Error": "No image file provided"}), 400
-        
+
         # Get the uploaded image file
         image_file = request.files['image']
 
         if image_file.filename == '':
             return jsonify({"Error": "No selected file"}), 400
 
-        # Read the image file content
-        image_bytes = image_file.read()
+        app.logger.debug(f"Received image file: {image_file.filename}")
 
-        if not image_bytes:
-            return jsonify({"Error": "Empty image file"}), 400
+        labels = detect_labels(image_file)
 
-        # Initialize the Vision API client
-        vision_client = vision.ImageAnnotatorClient()
+        app.logger.debug(f"Detected labels: {labels}")
 
-        # Create an Image object for the Vision API
-        image = vision.Image(content=image_bytes)
-
-        # Specify the features you want the API to perform
-        # For example, LABEL_DETECTION to identify objects within the image
-        features = [
-            vision.Feature(type=vision.Feature.Type.LABEL_DETECTION, max_results=10),
-            vision.Feature(type=vision.Feature.Type.OBJECT_LOCALIZATION, max_results=5)
-        ]
-
-        # Construct the request
-        request = vision.AnnotateImageRequest(image=image, features=features)
-
-        # Perform the request
-        response = vision_client.annotate_image(request=request)
-
-        # Check for errors in the response
-        if response.error.message:
-            raise Exception(f"{response.error.message}")
-
-        # Extract label annotations
-        labels = response.label_annotations
-        recognized_labels = [label.description for label in labels]
-
-        # Extract localized object annotations (optional)
-        objects = response.localized_object_annotations
-        recognized_objects = [obj.name for obj in objects]
-
-        # Combine labels and objects for response
-        recognition_results = {
-            "labels": recognized_labels,
-            "objects": recognized_objects
-        }
-
-        return jsonify({"recognized_items": recognition_results}), 200
+        return jsonify({"recognized_items": labels}), 200
 
     except Exception as e:
-        app.logger.error(f"Error occurred in recognize_image(): {e}")
-        return jsonify({"Error": f"An error occurred in recognize_image(): {e}"}), 500
+        # Log the error and return a 500 response
+        app.logger.error(f"Error occurred in recognize_image(): {str(e)}")
+        return jsonify({"Error": f"An error occurred in recognize_image(): {str(e)}"}), 500
 
 #########################################
 # Login and Logout functions, both POST #
@@ -1477,3 +1473,5 @@ def serve_frontend(path):
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)
+
+
