@@ -1,4 +1,6 @@
-# Grocery Buddy - https://smartgroceryapp-439520.uc.r.appspot.com/
+# Grocery Buddy 
+
+https://smartgroceryapp-439520.uc.r.appspot.com/
 
 
 ## Jersey and the Cats
