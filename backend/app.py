@@ -8,6 +8,7 @@ import os
 import sys
 import json
 from datetime import datetime, timedelta
+sys.path.append(os.path.dirname(__file__))  
 from db_config import get_db_connection
 from datetime import timedelta
 from google.cloud import vision
@@ -16,18 +17,21 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from collections import defaultdict
 from dotenv import load_dotenv
+import logging
 
+# Load environment variables from .env file
 load_dotenv()
 
 
-app = Flask(__name__, static_folder='../../frontend/dist', static_url_path='')
-app.config["SECRET_KEY"] = "N3Cr0n_$uPr3mA¢Y"
+app = Flask(__name__, static_folder='static', static_url_path='')
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "N3Cr0n_$uPr3mA¢Y")
 
 CORS(app, supports_credentials=True, resources={
     r"/api/*": {
         "origins": [
-            "http://localhost:5173",
-            "https://smartgroceryapp-439520.uc.r.appspot.com"
+            "https://smartgroceryapp-439520.uc.r.appspot.com",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
@@ -45,13 +49,15 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_PERMANENT'] = True
 app.permanent_session_lifetime = timedelta(days=7)  
 
-session_dir = '/tmp/flask_session'
+session_dir = os.path.join(os.path.dirname(__file__), 'flask_session')
 if not os.path.exists(session_dir):
     os.makedirs(session_dir)
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_FILE_DIR'] = session_dir
+app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 Session(app)
 
+# Set up Google Application Credentials
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:/OSU/2024_Fall/CS467_Capstone/GitApp/smartgroceryapp-439520-5de59c00682e.json'
 
 # Path to groceryapp.sql
 sql_file_path = os.path.join("..", "database", "groceryapp.sql")
@@ -149,112 +155,70 @@ def content_is_valid(content, list_to_be_valid, optional_fields=None):
     cursor.close()
     conn.close()
     print("Database initialized successfully.")"""
-"""
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = ' PUT CREDENTIALS HERE. EXAMPLE IN COMMENT BELOW '
-# '/home/neuralnine/Documents/Programming/NeuralNine/Python/Current/neuralninevisionproject-726f0feffaf9.json'
 
-def detect_labels(passed_image):
-    # Detects lables in the file
+############################################################
+# Route to recognize grocery items using Google Vision API #
+############################################################
+def detect_labels(image_file):
+    """
+    Detects labels in the provided image file using Google Vision API.
 
-    print("\nThis is type of passed_image: ", type(passed_image))
+    Args:
+        image_file (FileStorage): The uploaded image file.
 
-    image_bytes = passed_image.read()
+    Returns:
+        list: A list of labels detected in the image.
+    """
+    # Read the image file content
+    image_bytes = image_file.read()
 
-    print("\nThis is image_bytes: ", image_bytes)
+    # Create a Vision client
+    client = vision.ImageAnnotatorClient()
 
+    # Construct an Image instance
     image = vision.Image(content=image_bytes)
 
-    print("\nThis is image: ", image")
-    
-    response = vision_client.label_detection(image=image, max_results=3)
+    # Perform label detection
+    response = client.label_detection(image=image)
 
-    print("\nThis is response: ", response)
-          
-    labels = response.label_annotations
-    print("Lables:")
-    
-    for label in lables:
-        print(label.description)
-    
     if response.error.message:
         raise Exception(
-            "{}\nFor more info on error messages, check: "
-            "https://cloud.google.com/apis/design/errors".format(response.error.message)
+            f"{response.error.message}\nFor more info on error messages, "
+            "check: https://cloud.google.com/apis/design/errors"
         )
 
     labels = [label.description for label in response.label_annotations]
-
     return labels
 
-
-############################################################
-# Route to recognize grocery items using Google Vision API #
-############################################################
 @app.route('/api/recognize', methods=['POST'])
 def recognize_image():
     """
     Recognizes grocery items from an uploaded image using Google Vision API.
-    
+
     Returns:
-        200 if successful with recognized labels
-        400 if the request is invalid
-        500 for internal server errors
+        JSON response with recognized labels.
     """
     try:
         if 'image' not in request.files:
             return jsonify({"Error": "No image file provided"}), 400
-        
+
         # Get the uploaded image file
         image_file = request.files['image']
 
-        print("\nThis is image type: ", type(image_file))
+        if image_file.filename == '':
+            return jsonify({"Error": "No selected file"}), 400
 
-        three_labels = detect_labels(image_file)
-        
-        return jsonify({"recognized_items": three_labels}), 200
+        app.logger.debug(f"Received image file: {image_file.filename}")
 
-    except Exception as e:
-        return jsonify({"Error": f"An error occurred in recognize_image(): {str(e)}"}), 500"""
-"""
+        labels = detect_labels(image_file)
 
+        app.logger.debug(f"Detected labels: {labels}")
 
-############################################################
-# Route to recognize grocery items using Google Vision API #
-############################################################
-@app.route('/api/recognize', methods=['POST'])
-def recognize_image():
-    """
-    Recognizes grocery items from an uploaded image using Google Vision API.
-    
-    Returns:
-        200 if successful with recognized labels
-        400 if the request is invalid
-        500 for internal server errors
-    """
-    try:
-        if 'image' not in request.files:
-            return jsonify({"Error": "No image file provided"}), 400
-        
-        # Get the uploaded image file
-        image_file = request.files['image']
-
-        # Google vision expects image in form of bytes
-        image_bytes = image_file.read()
-
-        # Create an image object for Google Vision API
-        image = vision.Image(content=image_bytes)
-
-        # Use the Vision API to detect labels
-        response = vision_client.label_detection(image=image, max_results=3)
-
-        if response.error.message:
-            return jsonify({"Error": response.error.message}), 500
-
-        # Extract labels from the response
-        labels = [label.description for label in response.label_annotations]
         return jsonify({"recognized_items": labels}), 200
 
     except Exception as e:
+        # Log the error and return a 500 response
+        app.logger.error(f"Error occurred in recognize_image(): {str(e)}")
         return jsonify({"Error": f"An error occurred in recognize_image(): {str(e)}"}), 500
 
 #########################################
@@ -1354,42 +1318,39 @@ def get_suggestions(user_name):
         cursor = conn.cursor(dictionary=True)
         
         query = """
-        (
-        SELECT 
-            UserUsage.food_id,
-            AllFoods.food_name,
-            UserUsage.times_spoiled,
-            'spoiled' as type
-        FROM 
-            UserUsage
-        JOIN 
-            AllFoods ON UserUsage.food_id = AllFoods.food_id
-        WHERE 
-            user_id = (SELECT user_id FROM Users WHERE user_name = %s)
-        ORDER BY 
-            UserUsage.times_spoiled DESC
-        LIMIT 5
-        )
-        UNION ALL
-        (
-        SELECT 
-            UserUsage.food_id,
-            AllFoods.food_name,
-            UserUsage.times_used,
-            'used' as type
-        FROM 
-            UserUsage
-        JOIN 
-            AllFoods ON UserUsage.food_id = AllFoods.food_id
-        WHERE 
-            user_id = (SELECT user_id FROM Users WHERE user_name = %s)
-        ORDER BY 
-            UserUsage.times_used DESC
-        LIMIT 5
-        )
+            (
+              SELECT 
+                food_id,
+                food_name,
+                times_spoiled,
+                'spoiled' as type
+              FROM 
+                UserUsage
+            JOIN 
+                AllFoods ON UserUsage.food_id = AllFoods.food_id
+              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+              ORDER BY 
+                times_spoiled DESC
+              LIMIT 5
+            )
+            UNION ALL
+            (
+              SELECT 
+                food_id,
+                food_name,
+                times_used,
+                'used' as type
+              FROM 
+                UserUsage
+            JOIN
+                AllFoods ON UserUsage.food_id = AllFoods.food_id
+              WHERE user_id = (SELECT user_id FROM Users WHERE user_name = %s)
+              ORDER BY 
+                times_used DESC
+              LIMIT 5
+            )
         """
-
-        cursor.execute(query, (user_name, user_name))
+        cursor.execute(query, (session['username'], session['username']))
         result = cursor.fetchall()
         
         if not result:
@@ -1501,35 +1462,16 @@ def daily_check():
         print(f"Error occurred: {e}")
         return jsonify({"Error": f"An error occurred: {e}"}), 500
 
-# Serve the Vue.js frontend
+# Serve the frontend
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve_vue_app(path):
+def serve_frontend(path):
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
-@app.route('/')
-def serve_frontend():
-    return send_from_directory(app.static_folder, 'index.html')
-
-# Serve other static files
-@app.route('/<path:path>')
-def serve_static_files(path):
-    return send_from_directory(app.static_folder, path)
-
 if __name__ == '__main__':
-    # Initialize the database connection
-    conn = get_db_connection()
+    app.run(host='127.0.0.1', port=5000, debug=True)
 
-    # Specify the path to the groceryapp.sql file
-    #sql_file_path = '../../database/GroceryApp.sql'  # Adjust this path as needed
 
-    # Call the function to execute the SQL file
-    # execute_sql_file(conn, sql_file_path)
-
-    # Close the connection
-    conn.close()
-
-    app.run(debug=True)

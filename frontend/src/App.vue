@@ -77,7 +77,7 @@ export default {
     const fetchSessionData = async () => {
       try {
         // fetch the session status from the /api/session endpoint
-        const sessionResponse = await fetch("http://127.0.0.1:5000/api/session", {
+        const sessionResponse = await fetch("/api/session", {
           method: "GET",
           credentials: "include",
         });
@@ -109,7 +109,7 @@ export default {
     // fetch the user data based on the username
     const fetchUserData = async () => {
       try {
-        const userResponse = await fetch("http://127.0.0.1:5000/api/user", {
+        const userResponse = await fetch("/api/user", {
           method: "GET",
           credentials: "include", 
         });
@@ -128,7 +128,7 @@ export default {
     // handle user log out
     const handleLogout = async () => {
       try {
-        const logoutResponse = await fetch("http://127.0.0.1:5000/api/logout", {
+        const logoutResponse = await fetch("/api/logout", {
           method: "POST", // 
           credentials: "include",
         });

@@ -51,7 +51,7 @@
           this.isError = false;
   
           // send request to login route with user + pass
-          const response = await fetch("http://127.0.0.1:5000/api/login", {
+          const response = await fetch("/api/login", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
