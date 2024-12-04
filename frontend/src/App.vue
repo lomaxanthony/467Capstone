@@ -34,6 +34,9 @@ Added a Bootstrap NavBar that we can change if we want. Just wanted some okay lo
             <li class="nav-item">
               <router-link to="/recipes" class="nav-link" active-class="active">Recipes</router-link>
             </li>
+            <li class="nav-item">
+              <router-link to="/stats" class="nav-link" active-class="active">Stats</router-link>
+            </li>
             <li class="nav-item" v-if="state.isLoggedIn">
               <router-link to="/profile" class="nav-link" active-class="active">User Profile</router-link>
             </li>
